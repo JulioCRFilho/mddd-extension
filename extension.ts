@@ -44,7 +44,7 @@ class MDDDDecorationManager {
 }
 
 /**
- * Utilitário para transformar nomes camelCase/snake_case em labels legíveis
+ * Utilitário para transformar nomes em labels legíveis
  */
 function toReadableLabel(name: string): string {
     let cleaned = name.replace(/^_+/, '');
@@ -56,19 +56,19 @@ function toReadableLabel(name: string): string {
 }
 
 /**
- * Extrai o identificador da linha imediatamente abaixo do comentário
+ * Extrai o identificador da linha, ignorando keywords
  */
 function extractIdentifierBelow(lineText: string): string | null {
     let code = lineText.replace(/^\s*\/\/.*$/, '').replace(/^\s*#.*$/, '').replace(/^\s*--.*$/, '');
     
-    const keywords = /\b(class|function|const|let|var|interface|type|enum|struct|def|func|public|private|protected|static|async|await|import|export|from|return|if|else|for|while|do|switch|case|break|continue|new|this|super|extends|implements|abstract|final|override)\b/;
+    const keywords = /\b(class|function|const|let|var|interface|type|enum|struct|def|func|public|private|protected|static|async|await|import|export|from|return|if|else|for|while|do|switch|case|break|continue|new|this|super|extends|implements|abstract|final|override|void|int|string|boolean|number|any|null|undefined|char|float|double|byte|short|long|signed|unsigned)\b/;
     
     let cleaned = code.replace(/^\s*/, '');
     while (keywords.test(cleaned)) {
         cleaned = cleaned.replace(keywords, '').trim();
     }
     
-    const match = cleaned.match(/^\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*[\(\)\[\]\{\}:=,;]?/);
+    const match = cleaned.match(/^\s*([a-zA-Z_][a-zA-Z0-9_]*)/);
     
     if (match && match[1]) {
         return match[1];
@@ -79,61 +79,102 @@ function extractIdentifierBelow(lineText: string): string | null {
 
 /**
  * Escaneia o documento para encontrar todas as tags //@ com o mesmo prefixo
- * Retorna tags com conexões adicionais
+ * Conexões manuais: tags //@ seguidas (sem código) são conexões
  */
-function findRelatedTags(document: vscode.TextDocument, prefix: string): Array<{line: number, id: string, label: string, connections: string[]}> {
-    const relatedTags: Array<{line: number, id: string, label: string, connections: string[]}> = [];
+function findRelatedTags(document: vscode.TextDocument, prefix: string): Array<{line: number, id: string, label: string, connections: Array<{id: string, label: string}>}> {
+    const relatedTags: Array<{line: number, id: string, label: string, connections: Array<{id: string, label: string}>}> = [];
     const text = document.getText();
     const lines = text.split(/\r?\n/);
     
+    // Primeiro passo: identifica todas as tags
+    const allTags: Array<{line: number, id: string, description: string | null, isConnection: boolean}> = [];
+    
     for (let i = 0; i < lines.length; i++) {
         const line = lines[i];
-        const tagMatch = line.match(/\/\/@([\w.]+)/);
+        
+        // Verifica se é conexão manual //@->ID ou //@->ID:descrição
+        const connMatch = line.match(/\/\/@->([\w.]+)(?::([^\n]+))?/);
+        if (connMatch) {
+            const targetId = connMatch[1];
+            const description = connMatch[2] ? connMatch[2].trim() : null;
+            
+            allTags.push({
+                line: i,
+                id: targetId,
+                description: description,
+                isConnection: true
+            });
+            continue;
+        }
+        
+        // Verifica se é tag normal //@ID ou //@ID:descrição
+        const tagMatch = line.match(/\/\/@([\w.]+)(?::([^\n]+))?/);
         
         if (tagMatch) {
             const fullId = tagMatch[1];
-            // Ignora tags de conexão manual (//@->ID)
-            if (fullId.startsWith('->')) continue;
+            const description = tagMatch[2] ? tagMatch[2].trim() : null;
             
-            const tagPrefix = fullId.split(/[0-9]/)[0];
+            allTags.push({
+                line: i,
+                id: fullId,
+                description: description,
+                isConnection: false
+            });
+        }
+    }
+    
+    // Segundo passo: marca conexões (tags seguidas sem código)
+    for (let i = 1; i < allTags.length; i++) {
+        const prev = allTags[i - 1];
+        const current = allTags[i];
+        
+        if (current.line === prev.line + 1) {
+            current.isConnection = true;
+        }
+    }
+    
+    // Terceiro passo: coleta tags do prefixo
+    for (const tag of allTags) {
+        if (tag.isConnection) continue;
+        
+        const fullId = tag.id;
+        const tagPrefix = fullId.split(/[0-9]/)[0];
+        
+        if (tagPrefix.toLowerCase() === prefix.toLowerCase()) {
+            const connections: Array<{id: string, label: string}> = [];
+            const tagIndex = allTags.indexOf(tag);
             
-            if (tagPrefix.toLowerCase() === prefix.toLowerCase()) {
-                let identifier: string | null = null;
-                let connections: string[] = [];
-                
-                // Varre linhas seguintes para encontrar conexões manuais e o código
-                let j = i + 1;
-                
-                // Primeiro, coleta todas as conexões manuais (//@->ID)
-                while (j < lines.length) {
-                    const nextLine = lines[j];
-                    const connMatch = nextLine.match(/\/\/@->([\w.]+)/);
-                    if (connMatch) {
-                        connections.push(connMatch[1]);
-                        j++;
-                    } else {
-                        break;
-                    }
+            for (let k = tagIndex + 1; k < allTags.length; k++) {
+                const nextTag = allTags[k];
+                if (nextTag.isConnection && nextTag.line === tag.line + (k - tagIndex)) {
+                    connections.push({
+                        id: nextTag.id,
+                        label: nextTag.description || nextTag.id
+                    });
+                } else {
+                    break;
                 }
-                
-                // A primeira linha que não é //@ nem //@-> é o código do nó
-                if (j < lines.length) {
-                    const codeLine = lines[j];
-                    // Só extrai se não for uma tag
-                    if (!codeLine.match(/\/\/@/)) {
-                        identifier = extractIdentifierBelow(codeLine);
-                    }
-                }
-                
-                const label = identifier ? toReadableLabel(identifier) : fullId;
-                
-                relatedTags.push({
-                    line: i,
-                    id: fullId,
-                    label: label,
-                    connections: connections
-                });
             }
+            
+            let identifier: string | null = null;
+            let j = tag.line + 1;
+            
+            while (j < lines.length && lines[j].match(/\/\/@/)) {
+                j++;
+            }
+            
+            if (j < lines.length) {
+                identifier = extractIdentifierBelow(lines[j]);
+            }
+            
+            const label = identifier ? toReadableLabel(identifier) : fullId;
+            
+            relatedTags.push({
+                line: tag.line,
+                id: fullId,
+                label: label,
+                connections: connections
+            });
         }
     }
     
@@ -153,9 +194,30 @@ function findRelatedTags(document: vscode.TextDocument, prefix: string): Array<{
 }
 
 /**
+ * Encontra o ID do pai de um item numerado
+ */
+function findParentId(id: string, groups: Array<{id: string}>): string | null {
+    const lastDotIndex = id.lastIndexOf('.');
+    if (lastDotIndex > 0) {
+        const parentId = id.substring(0, lastDotIndex);
+        return parentId;
+    }
+    
+    const match = id.match(/^([a-zA-Z_]+)\d+$/);
+    if (match) {
+        const groupId = match[1];
+        if (groups.some(g => g.id === groupId)) {
+            return groupId;
+        }
+    }
+    
+    return null;
+}
+
+/**
  * Gera o código Mermaid graph TD baseado nas tags relacionadas
  */
-function generateMermaidDiagram(tags: Array<{line: number, id: string, label: string, connections: string[]}>): string {
+function generateMermaidDiagram(tags: Array<{line: number, id: string, label: string, connections: Array<{id: string, label: string}>}>): string {
     if (tags.length === 0) {
         return 'graph TD\n    A[Nenhuma tag relacionada encontrada]';
     }
@@ -209,39 +271,18 @@ function generateMermaidDiagram(tags: Array<{line: number, id: string, label: st
             mermaid += `    ${parentNodeId} --> ${currentNodeId}\n`;
         }
         
-        // Conexões manuais (//@->ID)
         if (item.connections && item.connections.length > 0) {
-            for (const targetId of item.connections) {
-                if (idToNodeId.has(targetId)) {
-                    const targetNodeId = idToNodeId.get(targetId)!;
-                    mermaid += `    ${currentNodeId} --> ${targetNodeId}\n`;
+            for (const conn of item.connections) {
+                if (idToNodeId.has(conn.id)) {
+                    const targetNodeId = idToNodeId.get(conn.id)!;
+                    const safeLabel = conn.label.replace(/"/g, '"');
+                    mermaid += `    ${currentNodeId} --> ${targetNodeId}["${safeLabel}"]\n`;
                 }
             }
         }
     }
     
     return mermaid;
-}
-
-/**
- * Encontra o ID do pai de um item numerado
- */
-function findParentId(id: string, groups: Array<{id: string}>): string | null {
-    const lastDotIndex = id.lastIndexOf('.');
-    if (lastDotIndex > 0) {
-        const parentId = id.substring(0, lastDotIndex);
-        return parentId;
-    }
-    
-    const match = id.match(/^([a-zA-Z_]+)\d+$/);
-    if (match) {
-        const groupId = match[1];
-        if (groups.some(g => g.id === groupId)) {
-            return groupId;
-        }
-    }
-    
-    return null;
 }
 
 /**
@@ -373,20 +414,16 @@ class MDDDDiagramPanel {
 export function activate(context: vscode.ExtensionContext) {
     console.log('MDDD Extension está ativa');
     
-    // Caminho do ícone
     const iconPath = vscode.Uri.joinPath(context.extensionUri, 'assets', 'icon.png').fsPath;
     
-    // Cria gerenciador de decorações
     const decorationManager = new MDDDDecorationManager(iconPath);
     context.subscriptions.push(decorationManager);
     
-    // Atualiza decorações
     const updateDecorations = (editor: vscode.TextEditor) => {
         const decorations = decorationManager.provideDecorations(editor.document);
         decorationManager.apply(editor, decorations);
     };
     
-    // Comando para mostrar diagrama
     const showDiagramCommand = vscode.commands.registerCommand(
         'mddd.showDiagram',
         (lineNumber: number) => {
@@ -409,7 +446,6 @@ export function activate(context: vscode.ExtensionContext) {
     );
     context.subscriptions.push(showDiagramCommand);
     
-    // Detecta clique na linha com tag e abre diagrama automaticamente
     let lastClickLine = -1;
     const clickDetection = vscode.window.onDidChangeTextEditorSelection(event => {
         const editor = event.textEditor;
@@ -420,14 +456,11 @@ export function activate(context: vscode.ExtensionContext) {
         
         const currentLine = selection.active.line;
         
-        // Evita repetição do mesmo clique
         if (currentLine === lastClickLine) return;
         lastClickLine = currentLine;
         
-        // Atualiza decorações
         updateDecorations(editor);
         
-        // Se a linha tem tag, abre o diagrama
         const lineText = editor.document.lineAt(currentLine).text;
         if (lineText.match(/\/\/@([\w.]+)/)) {
             vscode.commands.executeCommand('mddd.showDiagram', currentLine);
@@ -435,26 +468,20 @@ export function activate(context: vscode.ExtensionContext) {
     });
     context.subscriptions.push(clickDetection);
     
-    // Atualiza decorações quando o editor muda
     context.subscriptions.push(vscode.window.onDidChangeActiveTextEditor(editor => {
         if (editor) updateDecorations(editor);
     }));
     
-    // Atualiza decorações quando o documento muda
     context.subscriptions.push(vscode.workspace.onDidChangeTextDocument(event => {
         const editor = vscode.window.activeTextEditor;
         if (editor && event.document === editor.document) updateDecorations(editor);
     }));
     
-    // Aplica decorações iniciais
     if (vscode.window.activeTextEditor) {
         updateDecorations(vscode.window.activeTextEditor);
     }
 }
 
-/**
- * Desativa a extensão
- */
 export function deactivate() {
     console.log('MDDD Extension foi desativada');
 }
