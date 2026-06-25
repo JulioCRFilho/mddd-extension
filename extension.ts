@@ -263,23 +263,54 @@ export function activate(context: vscode.ExtensionContext) {
             const document = vscode.window.activeTextEditor?.document;
             if (!document) return;
             
-            // Extrai o prefixo da tag na linha
+            // Extrai o prefixo da tag na linha (apenas para identificar qual tag foi clicada)
             const lineText = document.lineAt(lineNumber).text;
             const tagMatch = lineText.match(/\/\/@([\w.]+)/);
             if (!tagMatch) return;
             
-            const fullId = tagMatch[1];
-            const prefix = fullId.split(/[0-9]/)[0];
+            // Busca TODAS as tags do documento (todos os grupos)
+            const allTags = findAllTags(document);
+            const mermaidCode = generateMermaidDiagram(allTags);
             
-            // Encontra todas as tags relacionadas
-            const relatedTags = findRelatedTags(document, prefix);
-            const mermaidCode = generateMermaidDiagram(relatedTags);
-            
-            // Abre webview com o diagrama em nova coluna
+            // Abre webview com o diagrama completo em nova coluna
             MDDDDiagramPanel.createOrShow(context.extensionUri, mermaidCode);
         }
     );
     context.subscriptions.push(showDiagramCommand);
+}
+
+/**
+ * Busca todas as tags do documento
+ */
+function findAllTags(document: vscode.TextDocument): Array<{line: number, id: string, label: string}> {
+    const allTags: Array<{line: number, id: string, label: string}> = [];
+    const text = document.getText();
+    const lines = text.split(/\r?\n/);
+    
+    for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        const tagMatch = line.match(/\/\/@([\w.]+)/);
+        
+        if (tagMatch) {
+            const fullId = tagMatch[1];
+            
+            // Tenta extrair identificador na linha abaixo
+            let identifier: string | null = null;
+            if (i + 1 < lines.length) {
+                identifier = extractIdentifierBelow(lines[i + 1]);
+            }
+            
+            const label = identifier ? toReadableLabel(identifier) : fullId;
+            
+            allTags.push({
+                line: i,
+                id: fullId,
+                label: label
+            });
+        }
+    }
+    
+    return allTags;
 }
 
 /**
