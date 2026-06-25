@@ -362,6 +362,28 @@ class MDDDDiagramPanel {
     }
     
     private _getHtmlForWebview(mermaidCode: string): string {
+        // Detecta o tema do VS Code
+        const isDarkTheme = vscode.window.activeColorTheme.kind === vscode.ColorThemeKind.Dark;
+        
+        // Define cores baseadas no tema
+        const colors = isDarkTheme ? {
+            primary: '#007acc',
+            primaryText: '#fff',
+            line: '#666',
+            secondary: '#2d2d2d',
+            tertiary: '#1e1e1e',
+            background: '#1e1e1e',
+            text: '#d4d4d4'
+        } : {
+            primary: '#007acc',
+            primaryText: '#fff',
+            line: '#666',
+            secondary: '#f5f5f5',
+            tertiary: '#fff',
+            background: '#ffffff',
+            text: '#333333'
+        };
+        
         return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -373,8 +395,8 @@ class MDDDDiagramPanel {
         body {
             font-family: var(--vscode-font-family);
             padding: 20px;
-            background-color: var(--vscode-editor-background);
-            color: var(--vscode-editor-foreground);
+            background-color: ${colors.background};
+            color: ${colors.text};
         }
         .mermaid {
             display: flex;
@@ -391,14 +413,14 @@ class MDDDDiagramPanel {
     <script>
         mermaid.initialize({
             startOnLoad: true,
-            theme: 'default',
+            theme: '${isDarkTheme ? 'dark' : 'default'}',
             themeVariables: {
-                primaryColor: '#007acc',
-                primaryTextColor: '#fff',
-                primaryBorderColor: '#007acc',
-                lineColor: '#666',
-                secondaryColor: '#f5f5f5',
-                tertiaryColor: '#fff'
+                primaryColor: '${colors.primary}',
+                primaryTextColor: '${colors.primaryText}',
+                primaryBorderColor: '${colors.primary}',
+                lineColor: '${colors.line}',
+                secondaryColor: '${colors.secondary}',
+                tertiaryColor: '${colors.tertiary}'
             }
         });
     </script>
