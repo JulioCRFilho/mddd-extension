@@ -87,12 +87,13 @@ function findRelatedTags(document: vscode.TextDocument, prefix: string): Array<{
     const lines = text.split(/\r?\n/);
     
     // Primeiro passo: identifica todas as tags
-    const allTags: Array<{line: number, id: string, description: string | null, isConnection: boolean}> = [];
+    const allTags: Array<{line: number, id: string, description: string | null, isConnection: boolean, isArrow: boolean}> = [];
     
     for (let i = 0; i < lines.length; i++) {
         const line = lines[i];
         
-        // Verifica se é conexão manual //@->ID:comentário
+        // Verifica se é tag com seta //@->ID:comentário
+        // Cria um nó independente a partir do código abaixo, com conexão para ID
         const connMatch = line.match(/\/\/@->([\w.]+)(?::([^\n]+))?/);
         if (connMatch) {
             const targetId = connMatch[1];
@@ -102,14 +103,14 @@ function findRelatedTags(document: vscode.TextDocument, prefix: string): Array<{
                 line: i,
                 id: targetId,
                 description: description,
-                isConnection: true
+                isConnection: false,
+                isArrow: true
             });
             continue;
         }
         
-        // Verifica se é tag normal //@ID:comentário
-        // O comentário é usado retroativamente: se esta linha segue outra tag,
-        // o comentário vira label na seta entre o nó anterior e este nó
+        // Verifica se é tag normal //@ID:comentário (retroativo)
+        // O comentário vira label na seta do nó anterior para este nó
         const tagMatch = line.match(/\/\/@([\w.]+)(?::([^\n]+))?/);
         
         if (tagMatch) {
@@ -120,7 +121,8 @@ function findRelatedTags(document: vscode.TextDocument, prefix: string): Array<{
                 line: i,
                 id: fullId,
                 description: description,
-                isConnection: false
+                isConnection: false,
+                isArrow: false
             });
         }
     }
@@ -139,6 +141,62 @@ function findRelatedTags(document: vscode.TextDocument, prefix: string): Array<{
     for (const tag of allTags) {
         if (tag.isConnection) continue;
         
+        // Extrai identificador do código (primeira linha não-//@)
+        let identifier: string | null = null;
+        let j = tag.line + 1;
+        
+        while (j < lines.length && lines[j].match(/\/\/@/)) {
+            j++;
+        }
+        
+        if (j < lines.length) {
+            identifier = extractIdentifierBelow(lines[j]);
+        }
+        
+        if (tag.isArrow) {
+            // //@->TargetId:desc — cria nó a partir do código abaixo + seta para TargetId
+            const sourceId = identifier || 'Unknown';
+            const sourcePrefix = sourceId.split(/[0-9]/)[0];
+            
+            if (sourcePrefix.toLowerCase() !== prefix.toLowerCase()) continue;
+            
+            const label = identifier ? toReadableLabel(identifier) : tag.id;
+            const connections: Array<{id: string, label: string}> = [];
+            
+            // Adiciona conexão deste nó para o targetId (tag.id)
+            connections.push({
+                id: tag.id,
+                label: tag.description || ''
+            });
+            
+            relatedTags.push({
+                line: tag.line,
+                id: sourceId,
+                label: label,
+                description: null,
+                connections: connections
+            });
+            
+            // Se o targetId não existe ainda como nó, precisamos adicioná-lo também
+            // para que a seta tenha um destino visível
+            const targetExists = allTags.some(
+                t => t.id === tag.id && !t.isArrow && !t.isConnection
+            );
+            if (!targetExists) {
+                // Cria nó para o target com id igual ao próprio targetId
+                const targetLabel = toReadableLabel(tag.id);
+                relatedTags.push({
+                    line: tag.line,
+                    id: tag.id,
+                    label: targetLabel,
+                    description: null,
+                    connections: []
+                });
+            }
+            
+            continue;
+        }
+        
         const fullId = tag.id;
         const tagPrefix = fullId.split(/[0-9]/)[0];
         
@@ -156,18 +214,6 @@ function findRelatedTags(document: vscode.TextDocument, prefix: string): Array<{
                 } else {
                     break;
                 }
-            }
-            
-            // Extrai identificador do código (primeira linha não-//@)
-            let identifier: string | null = null;
-            let j = tag.line + 1;
-            
-            while (j < lines.length && lines[j].match(/\/\/@/)) {
-                j++;
-            }
-            
-            if (j < lines.length) {
-                identifier = extractIdentifierBelow(lines[j]);
             }
             
             // Label do nó: sempre do código, nunca da tag
