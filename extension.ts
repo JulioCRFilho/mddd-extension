@@ -79,9 +79,10 @@ function extractIdentifierBelow(lineText: string): string | null {
 
 /**
  * Escaneia o documento para encontrar todas as tags //@ com o mesmo prefixo
+ * Retorna tags com conexões adicionais
  */
-function findRelatedTags(document: vscode.TextDocument, prefix: string): Array<{line: number, id: string, label: string}> {
-    const relatedTags: Array<{line: number, id: string, label: string}> = [];
+function findRelatedTags(document: vscode.TextDocument, prefix: string): Array<{line: number, id: string, label: string, connections: string[]}> {
+    const relatedTags: Array<{line: number, id: string, label: string, connections: string[]}> = [];
     const text = document.getText();
     const lines = text.split(/\r?\n/);
     
@@ -91,12 +92,37 @@ function findRelatedTags(document: vscode.TextDocument, prefix: string): Array<{
         
         if (tagMatch) {
             const fullId = tagMatch[1];
+            // Ignora tags de conexão manual (//@->ID)
+            if (fullId.startsWith('->')) continue;
+            
             const tagPrefix = fullId.split(/[0-9]/)[0];
             
             if (tagPrefix.toLowerCase() === prefix.toLowerCase()) {
                 let identifier: string | null = null;
-                if (i + 1 < lines.length) {
-                    identifier = extractIdentifierBelow(lines[i + 1]);
+                let connections: string[] = [];
+                
+                // Varre linhas seguintes para encontrar conexões manuais e o código
+                let j = i + 1;
+                
+                // Primeiro, coleta todas as conexões manuais (//@->ID)
+                while (j < lines.length) {
+                    const nextLine = lines[j];
+                    const connMatch = nextLine.match(/\/\/@->([\w.]+)/);
+                    if (connMatch) {
+                        connections.push(connMatch[1]);
+                        j++;
+                    } else {
+                        break;
+                    }
+                }
+                
+                // A primeira linha que não é //@ nem //@-> é o código do nó
+                if (j < lines.length) {
+                    const codeLine = lines[j];
+                    // Só extrai se não for uma tag
+                    if (!codeLine.match(/\/\/@/)) {
+                        identifier = extractIdentifierBelow(codeLine);
+                    }
                 }
                 
                 const label = identifier ? toReadableLabel(identifier) : fullId;
@@ -104,7 +130,8 @@ function findRelatedTags(document: vscode.TextDocument, prefix: string): Array<{
                 relatedTags.push({
                     line: i,
                     id: fullId,
-                    label: label
+                    label: label,
+                    connections: connections
                 });
             }
         }
@@ -128,7 +155,7 @@ function findRelatedTags(document: vscode.TextDocument, prefix: string): Array<{
 /**
  * Gera o código Mermaid graph TD baseado nas tags relacionadas
  */
-function generateMermaidDiagram(tags: Array<{line: number, id: string, label: string}>): string {
+function generateMermaidDiagram(tags: Array<{line: number, id: string, label: string, connections: string[]}>): string {
     if (tags.length === 0) {
         return 'graph TD\n    A[Nenhuma tag relacionada encontrada]';
     }
@@ -180,6 +207,16 @@ function generateMermaidDiagram(tags: Array<{line: number, id: string, label: st
         if (parentId && idToNodeId.has(parentId)) {
             const parentNodeId = idToNodeId.get(parentId)!;
             mermaid += `    ${parentNodeId} --> ${currentNodeId}\n`;
+        }
+        
+        // Conexões manuais (//@->ID)
+        if (item.connections && item.connections.length > 0) {
+            for (const targetId of item.connections) {
+                if (idToNodeId.has(targetId)) {
+                    const targetNodeId = idToNodeId.get(targetId)!;
+                    mermaid += `    ${currentNodeId} --> ${targetNodeId}\n`;
+                }
+            }
         }
     }
     
