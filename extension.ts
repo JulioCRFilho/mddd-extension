@@ -125,6 +125,28 @@ function findRelatedTags(document: vscode.TextDocument, prefix: string): Array<{
         }
     }
     
+    // Ordena por ID numérico (ex: Teste1, Teste1.1, Teste1.2, Teste2)
+    relatedTags.sort((a, b) => {
+        const idA = a.id;
+        const idB = b.id;
+        
+        // Extrai números do ID
+        const numsA = idA.match(/\d+/g)?.map(Number) || [0];
+        const numsB = idB.match(/\d+/g)?.map(Number) || [0];
+        
+        // Compara cada nível numérico
+        for (let i = 0; i < Math.max(numsA.length, numsB.length); i++) {
+            const numA = numsA[i] || 0;
+            const numB = numsB[i] || 0;
+            
+            if (numA !== numB) {
+                return numA - numB;
+            }
+        }
+        
+        return 0;
+    });
+    
     return relatedTags;
 }
 
@@ -136,31 +158,85 @@ function generateMermaidDiagram(tags: Array<{line: number, id: string, label: st
         return 'graph TD\n    A[Nenhuma tag relacionada encontrada]';
     }
     
-    // Ordena por número do ID para manter ordem hierárquica
+    // Ordena por ID para manter ordem hierárquica
     const sorted = [...tags].sort((a, b) => {
-        const numA = parseInt(a.id.match(/\d+/)![0]) || 0;
-        const numB = parseInt(b.id.match(/\d+/)![0]) || 0;
-        return numA - numB;
+        const numsA = a.id.match(/\d+/g)?.map(Number) || [0];
+        const numsB = b.id.match(/\d+/g)?.map(Number) || [0];
+        
+        for (let i = 0; i < Math.max(numsA.length, numsB.length); i++) {
+            const numA = numsA[i] || 0;
+            const numB = numsB[i] || 0;
+            if (numA !== numB) return numA - numB;
+        }
+        return 0;
     });
     
     let mermaid = 'graph TD\n';
     
-    // Cria nós e conexões hierárquicas
+    // Mapa de ID para nodeId
+    const idToNodeId = new Map<string, string>();
+    
+    // Cria nós
     for (let i = 0; i < sorted.length; i++) {
         const current = sorted[i];
         const nodeId = `N${i}`;
         const safeLabel = current.label.replace(/"/g, '"');
         
+        idToNodeId.set(current.id, nodeId);
         mermaid += `    ${nodeId}["${safeLabel}"]\n`;
+    }
+    
+    // Cria conexões hierárquicas baseadas no ID
+    for (let i = 0; i < sorted.length; i++) {
+        const current = sorted[i];
+        const currentNodeId = idToNodeId.get(current.id)!;
         
-        // Conecta ao anterior (hierarquia linear)
-        if (i > 0) {
-            const prevNode = `N${i - 1}`;
-            mermaid += `    ${prevNode} --> ${nodeId}\n`;
+        // Extrai o pai baseado no ID
+        // Ex: Login1.1 -> Login1, Login2 -> Login, Login -> raiz
+        const parentId = getParentId(current.id);
+        
+        if (parentId && idToNodeId.has(parentId)) {
+            const parentNodeId = idToNodeId.get(parentId)!;
+            mermaid += `    ${parentNodeId} --> ${currentNodeId}\n`;
         }
     }
     
     return mermaid;
+}
+
+/**
+ * Extrai o ID do pai baseado na estrutura do ID
+ * Ex: Login1.1 -> Login1, Login2 -> Login, Login -> null
+ */
+function getParentId(id: string): string | null {
+    // Remove números do final para encontrar o pai
+    // Login1.1 -> Login1
+    // Login2 -> Login
+    // Login -> null (raiz)
+    
+    const match = id.match(/^(.+?)(\d+(\.\d+)*)$/);
+    if (match) {
+        const base = match[1];
+        const numbers = match[2];
+        
+        // Se tem apenas um número (ex: Login1), o pai é a base
+        if (!numbers.includes('.')) {
+            // Verifica se a base não é vazia (ex: "1" -> base "")
+            if (base) {
+                return base;
+            }
+        } else {
+            // Se tem múltiplos números (ex: Login1.1), remove o último nível
+            const lastDotIndex = numbers.lastIndexOf('.');
+            if (lastDotIndex > 0) {
+                return base + numbers.substring(0, lastDotIndex);
+            } else {
+                return base;
+            }
+        }
+    }
+    
+    return null;
 }
 
 /**
