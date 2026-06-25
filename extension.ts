@@ -1,6 +1,49 @@
 import * as vscode from 'vscode';
 
 /**
+ * CodeLens que aparece acima de linhas com tags //@
+ */
+class MDDDCodeLensProvider implements vscode.CodeLensProvider {
+    
+    private _onDidChangeCodeLenses: vscode.EventEmitter<void> = new vscode.EventEmitter<void>();
+    readonly onDidChangeCodeLenses: vscode.Event<void> = this._onDidChangeCodeLenses.event;
+    
+    provideCodeLenses(
+        document: vscode.TextDocument,
+        token: vscode.CancellationToken
+    ): vscode.CodeLens[] | Thenable<vscode.CodeLens[]> {
+        
+        const codeLenses: vscode.CodeLens[] = [];
+        const text = document.getText();
+        const lines = text.split(/\r?\n/);
+        
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i];
+            
+            // Verifica se a linha contém uma tag //@
+            if (line.match(/\/\/@([\w.]+)/)) {
+                const range = new vscode.Range(i, 0, i, 0);
+                const codeLens = new vscode.CodeLens(range, {
+                    title: '📊 Ver Diagrama',
+                    command: 'mddd.showDiagram',
+                    arguments: [document.uri, i]
+                });
+                codeLenses.push(codeLens);
+            }
+        }
+        
+        return codeLenses;
+    }
+    
+    resolveCodeLens(
+        codeLens: vscode.CodeLens,
+        token: vscode.CancellationToken
+    ): vscode.CodeLens | Thenable<vscode.CodeLens> {
+        return codeLens;
+    }
+}
+
+/**
  * Utilitário para transformar nomes camelCase/snake_case em labels legíveis
  */
 function toReadableLabel(name: string): string {
@@ -49,7 +92,7 @@ function findRelatedTags(document: vscode.TextDocument, prefix: string): Array<{
     
     for (let i = 0; i < lines.length; i++) {
         const line = lines[i];
-        const tagMatch = line.match(/\/\/@(\w+)/);
+        const tagMatch = line.match(/\/\/@([\w.]+)/);
         
         if (tagMatch) {
             const fullId = tagMatch[1];
@@ -81,7 +124,7 @@ function findRelatedTags(document: vscode.TextDocument, prefix: string): Array<{
  */
 function generateMermaidDiagram(tags: Array<{line: number, id: string, label: string}>): string {
     if (tags.length === 0) {
-        return '```mermaid\ngraph TD\n    A[Nenhuma tag relacionada encontrada]\n```';
+        return 'graph TD\n    A[Nenhuma tag relacionada encontrada]';
     }
     
     // Ordena por número do ID para manter ordem hierárquica
@@ -91,7 +134,7 @@ function generateMermaidDiagram(tags: Array<{line: number, id: string, label: st
         return numA - numB;
     });
     
-    let mermaid = '```mermaid\ngraph TD\n';
+    let mermaid = 'graph TD\n';
     
     // Cria nós e conexões hierárquicas
     for (let i = 0; i < sorted.length; i++) {
@@ -108,8 +151,6 @@ function generateMermaidDiagram(tags: Array<{line: number, id: string, label: st
         }
     }
     
-    mermaid += '```';
-    
     return mermaid;
 }
 
@@ -124,13 +165,18 @@ class MDDDHoverProvider implements vscode.HoverProvider {
         token: vscode.CancellationToken
     ): vscode.ProviderResult<vscode.Hover> {
         
+        console.log('[MDDD] provideHover called at line:', position.line);
+        
         const line = document.lineAt(position.line);
         const lineText = line.text;
+        console.log('[MDDD] lineText:', lineText);
         
         // Verifica se a linha contém uma tag //@
-        const tagMatch = lineText.match(/\/\/@(\w+)/);
+        const tagMatch = lineText.match(/\/\/@([\w.]+)/);
+        console.log('[MDDD] tagMatch:', tagMatch);
         
         if (!tagMatch) {
+            console.log('[MDDD] No tag match, returning null');
             return null;
         }
         
@@ -139,8 +185,10 @@ class MDDDHoverProvider implements vscode.HoverProvider {
         
         // Encontra todas as tags relacionadas
         const relatedTags = findRelatedTags(document, prefix);
+        console.log('[MDDD] relatedTags count:', relatedTags.length);
         
         if (relatedTags.length === 0) {
+            console.log('[MDDD] No related tags, returning null');
             return null;
         }
         
@@ -164,6 +212,7 @@ class MDDDHoverProvider implements vscode.HoverProvider {
             lineText.length
         );
         
+        console.log('[MDDD] Returning hover with', relatedTags.length, 'tags');
         return new vscode.Hover(hoverContent, hoverRange);
     }
 }
@@ -174,13 +223,142 @@ class MDDDHoverProvider implements vscode.HoverProvider {
 export function activate(context: vscode.ExtensionContext) {
     console.log('MDDD Hover Extension está ativa');
     
-    // Registra o HoverProvider para todas as linguagens
-    const hoverProvider = vscode.languages.registerHoverProvider(
-        { scheme: 'file', language: '*' },
-        new MDDDHoverProvider()
+    // Registra o CodeLensProvider
+    const codeLensProvider = vscode.languages.registerCodeLensProvider(
+        { scheme: 'file' },
+        new MDDDCodeLensProvider()
     );
+    context.subscriptions.push(codeLensProvider);
     
-    context.subscriptions.push(hoverProvider);
+    // Registra o comando para mostrar diagrama
+    const showDiagramCommand = vscode.commands.registerCommand(
+        'mddd.showDiagram',
+        (uri: vscode.Uri, lineNumber: number) => {
+            const document = vscode.window.activeTextEditor?.document;
+            if (!document) return;
+            
+            // Extrai o prefixo da tag na linha
+            const lineText = document.lineAt(lineNumber).text;
+            const tagMatch = lineText.match(/\/\/@([\w.]+)/);
+            if (!tagMatch) return;
+            
+            const fullId = tagMatch[1];
+            const prefix = fullId.split(/[0-9]/)[0];
+            
+            // Encontra todas as tags relacionadas
+            const relatedTags = findRelatedTags(document, prefix);
+            const mermaidCode = generateMermaidDiagram(relatedTags);
+            
+            // Abre webview com o diagrama em nova coluna
+            MDDDDiagramPanel.createOrShow(context.extensionUri, mermaidCode);
+        }
+    );
+    context.subscriptions.push(showDiagramCommand);
+}
+
+/**
+ * Painel Webview para exibir diagramas Mermaid
+ */
+class MDDDDiagramPanel {
+    public static currentPanel: MDDDDiagramPanel | undefined;
+    public static readonly viewType = 'mddd.diagram';
+    
+    private readonly _panel: vscode.WebviewPanel;
+    private _disposables: vscode.Disposable[] = [];
+    
+    public static createOrShow(extensionUri: vscode.Uri, mermaidCode: string) {
+        const currentColumn = vscode.window.activeTextEditor?.viewColumn;
+        if (currentColumn === undefined) return;
+        
+        const besideColumn = currentColumn + 1;
+        
+        if (MDDDDiagramPanel.currentPanel) {
+            MDDDDiagramPanel.currentPanel._panel.reveal(besideColumn);
+            MDDDDiagramPanel.currentPanel._update(mermaidCode);
+            return;
+        }
+        
+        const panel = vscode.window.createWebviewPanel(
+            MDDDDiagramPanel.viewType,
+            'Diagrama Mermaid',
+            besideColumn,
+            {
+                enableScripts: true,
+                retainContextWhenHidden: true
+            }
+        );
+        
+        MDDDDiagramPanel.currentPanel = new MDDDDiagramPanel(panel, extensionUri, mermaidCode);
+    }
+    
+    private constructor(panel: vscode.WebviewPanel, extensionUri: vscode.Uri, mermaidCode: string) {
+        this._panel = panel;
+        
+        this._update(mermaidCode);
+        
+        this._panel.onDidDispose(() => this.dispose(), null, this._disposables);
+    }
+    
+    private _update(mermaidCode: string) {
+        const html = this._getHtmlForWebview(mermaidCode);
+        this._panel.webview.html = html;
+    }
+    
+    private _getHtmlForWebview(mermaidCode: string): string {
+        return `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Diagrama Mermaid</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <style>
+        body {
+            font-family: var(--vscode-font-family);
+            padding: 20px;
+            background-color: var(--vscode-editor-background);
+            color: var(--vscode-editor-foreground);
+        }
+        .mermaid {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 200px;
+        }
+    </style>
+</head>
+<body>
+    <div class="mermaid">
+        ${mermaidCode}
+    </div>
+    <script>
+        mermaid.initialize({
+            startOnLoad: true,
+            theme: 'default',
+            themeVariables: {
+                primaryColor: '#007acc',
+                primaryTextColor: '#fff',
+                primaryBorderColor: '#007acc',
+                lineColor: '#666',
+                secondaryColor: '#f5f5f5',
+                tertiaryColor: '#fff'
+            }
+        });
+    </script>
+</body>
+</html>`;
+    }
+    
+    public dispose() {
+        MDDDDiagramPanel.currentPanel = undefined;
+        this._panel.dispose();
+        while (this._disposables.length) {
+            const disposable = this._disposables.pop();
+            if (disposable) {
+                disposable.dispose();
+            }
+        }
+    }
 }
 
 /**
