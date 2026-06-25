@@ -10,18 +10,24 @@
     "Other"
   ],
   "activationEvents": [
-    "onLanguage:*"
+    "onLanguage:javascript",
+    "onLanguage:typescript",
+    "onLanguage:python",
+    "onLanguage:java",
+    "onLanguage:csharp",
+    "onLanguage:go",
+    "onLanguage:rust",
+    "onLanguage:php",
+    "onLanguage:dart",
+    "onLanguage:ruby",
+    "onLanguage:swift",
+    "onLanguage:kotlin",
+    "onLanguage:scala",
+    "onLanguage:cpp",
+    "onLanguage:c"
   ],
   "main": "./out/extension.js",
-  "contributes": {
-    "languages": [
-      {
-        "id": "plaintext",
-        "aliases": ["Plain Text", "plaintext"],
-        "extensions": [".txt", ".md"]
-      }
-    ]
-  },
+  "contributes": {},
   "scripts": {
     "vscode:prepublish": "npm run compile",
     "compile": "tsc -p ./",
