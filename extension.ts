@@ -128,11 +128,12 @@ function findRelatedTags(document: vscode.TextDocument, prefix: string): Array<{
     }
     
     // Segundo passo: marca conexões (tags seguidas sem código)
+    // Tags com seta (//@->) NÃO são conexões, são nós independentes
     for (let i = 1; i < allTags.length; i++) {
         const prev = allTags[i - 1];
         const current = allTags[i];
         
-        if (current.line === prev.line + 1) {
+        if (current.line === prev.line + 1 && !current.isArrow) {
             current.isConnection = true;
         }
     }
@@ -154,45 +155,74 @@ function findRelatedTags(document: vscode.TextDocument, prefix: string): Array<{
         }
         
         if (tag.isArrow) {
-            // //@->TargetId:desc — cria nó a partir do código abaixo + seta para TargetId
-            const sourceId = identifier || 'Unknown';
-            const sourcePrefix = sourceId.split(/[0-9]/)[0];
+            // //@->TargetId:desc — cria nó fonte com ID numerado sintético + seta para TargetId
+            // Usa o prefixo do target (tag.id) para filtrar, não do código fonte
+            const targetPrefix = tag.id.split(/[0-9]/)[0];
+            if (targetPrefix.toLowerCase() !== prefix.toLowerCase()) continue;
             
-            if (sourcePrefix.toLowerCase() !== prefix.toLowerCase()) continue;
+            const sourceName = identifier || 'Unknown';
+            
+            // ID numerado para evitar que vire grupo (grupos não têm dígitos)
+            const syntheticId = `${sourceName}_${tag.line}`;
             
             const label = identifier ? toReadableLabel(identifier) : tag.id;
             const connections: Array<{id: string, label: string}> = [];
             
-            // Adiciona conexão deste nó para o targetId (tag.id)
+            // Determina o alvo real da conexão:
+            // 1. Se o targetId já existe como nó real (//@ID declarado), usa ele
+            // 2. Se targetId não tem dígitos, é um grupo — usa o grupo 
+            // 3. Senão, usa o grupo do prefixo (o nó "entrada" que contém os filhos)
+            let resolvedTargetId = tag.id;
+            const targetExistsAsNode = relatedTags.some(t => t.id === tag.id) || allTags.some(t => t.id === tag.id && !t.isArrow);
+            const targetIsGroup = !/\d/.test(tag.id);
+            
+            if (!targetExistsAsNode) {
+                if (targetIsGroup) {
+                    // Grupo: usa o nome do grupo diretamente
+                    const groupExists = relatedTags.some(t => t.id === tag.id);
+                    if (!groupExists) {
+                        relatedTags.push({
+                            line: tag.line,
+                            id: tag.id,
+                            label: toReadableLabel(tag.id),
+                            description: null,
+                            connections: []
+                        });
+                    }
+                } else {
+                    // Nó numerado não declarado: usa o grupo (prefixo) como alvo
+                    // Ex: //@->Login1 onde não existe //@Login1, usa o grupo "Login"
+                    const groupId = tag.id.split(/[0-9]/)[0];
+                    const groupExists = relatedTags.some(t => t.id === groupId);
+                    if (groupExists) {
+                        resolvedTargetId = groupId;
+                    } else {
+                        // Cria o grupo e usa ele
+                        relatedTags.push({
+                            line: tag.line,
+                            id: groupId,
+                            label: toReadableLabel(groupId),
+                            description: null,
+                            connections: []
+                        });
+                        resolvedTargetId = groupId;
+                    }
+                }
+            }
+            
+            // Adiciona conexão deste nó para o alvo
             connections.push({
-                id: tag.id,
+                id: resolvedTargetId,
                 label: tag.description || ''
             });
             
             relatedTags.push({
                 line: tag.line,
-                id: sourceId,
+                id: syntheticId,
                 label: label,
                 description: null,
                 connections: connections
             });
-            
-            // Se o targetId não existe ainda como nó, precisamos adicioná-lo também
-            // para que a seta tenha um destino visível
-            const targetExists = allTags.some(
-                t => t.id === tag.id && !t.isArrow && !t.isConnection
-            );
-            if (!targetExists) {
-                // Cria nó para o target com id igual ao próprio targetId
-                const targetLabel = toReadableLabel(tag.id);
-                relatedTags.push({
-                    line: tag.line,
-                    id: tag.id,
-                    label: targetLabel,
-                    description: null,
-                    connections: []
-                });
-            }
             
             continue;
         }
@@ -290,9 +320,21 @@ function generateMermaidDiagram(tags: Array<{line: number, id: string, label: st
         return 0;
     });
     
+    // Mapeia quais grupos são alvo de conexões (precisam de nó de entrada)
+    const targetedGroups = new Set<string>();
+    for (const item of sortedNumbered) {
+        for (const conn of item.connections) {
+            if (groups.some(g => g.id === conn.id)) {
+                targetedGroups.add(conn.id);
+            }
+        }
+    }
+    
     let mermaid = 'graph TD\n';
     const idToNodeId = new Map<string, string>();
     let nodeIndex = 0;
+    
+    const allocated = new Set<string>();
     
     for (const group of sortedGroups) {
         const safeGroupLabel = group.label.replace(/"/g, '"');
@@ -303,14 +345,33 @@ function generateMermaidDiagram(tags: Array<{line: number, id: string, label: st
             return parentId === group.id || item.id.startsWith(group.id);
         });
         
+        // Nó de entrada para grupos alvo de conexão
+        if (targetedGroups.has(group.id)) {
+            const entryNodeId = `N${nodeIndex++}`;
+            const entryLabel = group.label.replace(/"/g, '"');
+            idToNodeId.set(group.id, entryNodeId);
+            mermaid += `        ${entryNodeId}["${entryLabel}"]\n`;
+        }
+        
         for (const item of groupItems) {
             const nodeId = `N${nodeIndex++}`;
             const safeLabel = item.label.replace(/"/g, '"');
             idToNodeId.set(item.id, nodeId);
             mermaid += `        ${nodeId}["${safeLabel}"]\n`;
+            allocated.add(item.id);
         }
         
         mermaid += `    end\n`;
+    }
+    
+    // Nós não alocados a subgraph (ex: sintéticos de //@->)
+    for (const item of sortedNumbered) {
+        if (!allocated.has(item.id)) {
+            const nodeId = `N${nodeIndex++}`;
+            const safeLabel = item.label.replace(/"/g, '"');
+            idToNodeId.set(item.id, nodeId);
+            mermaid += `    ${nodeId}["${safeLabel}"]\n`;
+        }
     }
     
     for (const item of sortedNumbered) {
@@ -332,8 +393,13 @@ function generateMermaidDiagram(tags: Array<{line: number, id: string, label: st
         // Conexões manuais com comentário na seta (formato: A -->|comentário| B)
         if (item.connections && item.connections.length > 0) {
             for (const conn of item.connections) {
-                if (idToNodeId.has(conn.id)) {
-                    const targetNodeId = idToNodeId.get(conn.id)!;
+                let targetNodeId = idToNodeId.get(conn.id);
+                // Fallback: se o ID exato não existe, tenta o grupo (prefixo)
+                if (!targetNodeId) {
+                    const parentId = findParentId(conn.id, sortedGroups);
+                    if (parentId) targetNodeId = idToNodeId.get(parentId);
+                }
+                if (targetNodeId) {
                     // Se tem comentário, adiciona na seta com |comentário|
                     if (conn.label && conn.label.trim()) {
                         const safeLabel = conn.label.replace(/"/g, '"');
