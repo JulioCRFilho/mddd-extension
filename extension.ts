@@ -3,6 +3,7 @@ import { MDDDDecorationManager } from './src/core/ui/decoration-manager';
 import { validateAndDisplayDiagram, DiagramCommandContext } from './src/core/commands/diagram-command';
 import { MDDDHoverProvider } from './src/core/ui/hover-provider';
 import { MDDDDocumentSymbolProvider } from './src/core/ui/document-symbols';
+import { MDDDFoldingProvider } from './src/core/ui/folding-provider';
 import { filterAllNodes, readDiagramType } from './src/core/diagram/parser';
 
 export function activate(context: vscode.ExtensionContext) {
@@ -134,6 +135,74 @@ export function activate(context: vscode.ExtensionContext) {
         new MDDDHoverProvider()
     );
     context.subscriptions.push(hoverProvider);
+
+    // ── FoldingRange Provider: esconder/expandir blocos de tags ──
+    context.subscriptions.push(
+        vscode.languages.registerFoldingRangeProvider(
+            [
+                { language: 'javascript' },
+                { language: 'typescript' },
+                { language: 'python' },
+                { language: 'java' },
+                { language: 'csharp' },
+                { language: 'go' },
+                { language: 'rust' },
+                { language: 'php' },
+                { language: 'dart' },
+                { language: 'ruby' },
+                { language: 'swift' },
+                { language: 'kotlin' },
+                { language: 'scala' },
+                { language: 'cpp' },
+                { language: 'c' }
+            ],
+            new MDDDFoldingProvider()
+        )
+    );
+
+    // ── Comando: Colapsar todas as tags ──
+    const foldAllTagsCommand = vscode.commands.registerCommand(
+        'mddd.foldAllTags',
+        () => {
+            const editor = vscode.window.activeTextEditor;
+            if (!editor) return;
+            vscode.commands.executeCommand('editor.foldAllMarkerRegions');
+        }
+    );
+    context.subscriptions.push(foldAllTagsCommand);
+
+    // ── Comando: Expandir todas as tags ──
+    const unfoldAllTagsCommand = vscode.commands.registerCommand(
+        'mddd.unfoldAllTags',
+        () => {
+            const editor = vscode.window.activeTextEditor;
+            if (!editor) return;
+            vscode.commands.executeCommand('editor.unfoldAllMarkerRegions');
+        }
+    );
+    context.subscriptions.push(unfoldAllTagsCommand);
+
+    // ── Auto-fold tags APENAS na primeira abertura do arquivo ──
+    const foldedFiles = new Set<string>();
+
+    context.subscriptions.push(
+        vscode.workspace.onDidOpenTextDocument(document => {
+            const text = document.getText();
+            if (!text.includes('//@')) return;
+
+            const fileKey = document.uri.toString();
+            // Só folda se nunca foi aberto antes
+            if (!foldedFiles.has(fileKey)) {
+                foldedFiles.add(fileKey);
+                setTimeout(() => {
+                    const editor = vscode.window.activeTextEditor;
+                    if (editor && editor.document === document) {
+                        vscode.commands.executeCommand('editor.foldAllMarkerRegions');
+                    }
+                }, 100);
+            }
+        })
+    );
 
     // ── DocumentSymbol Provider: outline com árvore de tags ──
     context.subscriptions.push(

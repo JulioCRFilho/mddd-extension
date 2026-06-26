@@ -10,7 +10,7 @@ export class MDDDDecorationManager {
         this.decorationType = vscode.window.createTextEditorDecorationType({
             gutterIconPath: vscode.Uri.file(iconPath),
             gutterIconSize: 'contain',
-            isWholeLine: true
+            isWholeLine: false  // Apenas a gutter, não a linha inteira
         });
     }
 
