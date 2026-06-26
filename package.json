@@ -24,7 +24,8 @@
     "onLanguage:kotlin",
     "onLanguage:scala",
     "onLanguage:cpp",
-    "onLanguage:c"
+    "onLanguage:c",
+    "onLanguage:sql"
   ],
   "main": "./out/extension.js",
   "contributes": {},

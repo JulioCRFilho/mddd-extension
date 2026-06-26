@@ -130,7 +130,8 @@ export function activate(context: vscode.ExtensionContext) {
             { language: 'kotlin' },
             { language: 'scala' },
             { language: 'cpp' },
-            { language: 'c' }
+            { language: 'c' },
+            { language: 'sql' }
         ],
         new MDDDHoverProvider()
     );
@@ -154,7 +155,8 @@ export function activate(context: vscode.ExtensionContext) {
                 { language: 'kotlin' },
                 { language: 'scala' },
                 { language: 'cpp' },
-                { language: 'c' }
+                { language: 'c' },
+                { language: 'sql' }
             ],
             new MDDDFoldingProvider()
         )
@@ -239,7 +241,8 @@ export function activate(context: vscode.ExtensionContext) {
                 { language: 'kotlin' },
                 { language: 'scala' },
                 { language: 'cpp' },
-                { language: 'c' }
+                { language: 'c' },
+                { language: 'sql' }
             ],
             new MDDDDocumentSymbolProvider()
         )
