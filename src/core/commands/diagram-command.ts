@@ -188,14 +188,9 @@ function processForwardPointers(
         }
     }
 
-    // Adiciona conexões diretas (//@Source->Target)
-    for (const conn of directConnections) {
-        // Verifica se o source existe como retro node
-        const sourceExists = retroNodes.find(n => n.id === conn.sourceId);
-        if (sourceExists) {
-            extraConnections.push(conn);
-        }
-    }
+    // NÃO adiciona conexões diretas como extraConnections
+    // Elas serão processadas diretamente pelo generator de sequence
+    // para manter a ordem correta
 
     return { syntheticNodes, extraConnections };
 }
@@ -211,7 +206,7 @@ function filterAndSortNodes(
 ): ProcessedNode[] {
     const allNodes: Array<{ line: number; id: string; label: string; description: string | null; connections: Array<{ id: string; label: string }> }> = [
         ...retroNodes.map(n => ({ ...n, connections: [] as Array<{ id: string; label: string }> })),
-        ...syntheticNodes.map(n => ({ ...n, description: null as string | null }))
+        ...syntheticNodes.map(n => ({ ...n, description: null as string | null, connections: n.connections || [] }))
     ];
 
     // Adiciona conexões extras aos nós correspondentes
@@ -222,13 +217,8 @@ function filterAndSortNodes(
         }
     }
 
-    // Filtra por tipo: grupos, entry nodes, sequence nodes
-    const groups = allNodes.filter(node => !/\d/.test(node.id));
-    const prefixNodes = allNodes.filter(node => /^[a-zA-Z_]+[0-9]+$/.test(node.id));
-    const sequenceNodes = allNodes.filter(node => /\.[0-9]+/.test(node.id));
-
-    // Combina e normaliza
-    const combined = [...groups, ...prefixNodes, ...sequenceNodes].map(node => ({
+    // Normaliza MANTENDO A ORDEM ORIGINAL
+    const normalized = allNodes.map(node => ({
         line: node.line,
         id: node.id,
         label: node.label || node.id,
@@ -236,33 +226,13 @@ function filterAndSortNodes(
         connections: node.connections || []
     })) as ProcessedNode[];
 
-    // Remove duplicatas mantendo ordem
-    const unique = combined.filter((node, index, self) =>
+    // Remove duplicatas mantendo ordem de primeira ocorrência
+    const unique = normalized.filter((node, index, self) =>
         index === self.findIndex(n => n.id === node.id)
     );
 
-    // Ordena: grupos primeiro (alfabético), depois entry nodes, depois sequence nodes
-    const sortedGroups = unique.filter(n => !/\d/.test(n.id)).sort((a, b) => a.id.localeCompare(b.id));
-    const sortedEntry = unique.filter(n => /^[a-zA-Z_]+[0-9]+$/.test(n.id)).sort((a, b) => {
-        const numsA = a.id.match(/\d+(\.\d+)*/g)?.[0]?.split('.').map(Number) || [0];
-        const numsB = b.id.match(/\d+(\.\d+)*/g)?.[0]?.split('.').map(Number) || [0];
-        for (let i = 0; i < Math.max(numsA.length, numsB.length); i++) {
-            const diff = (numsA[i] || 0) - (numsB[i] || 0);
-            if (diff !== 0) return diff;
-        }
-        return 0;
-    });
-    const sortedSeq = unique.filter(n => /\.[0-9]+/.test(n.id)).sort((a, b) => {
-        const numsA = a.id.match(/\d+(\.\d+)*/g)?.[0]?.split('.').map(Number) || [0];
-        const numsB = b.id.match(/\d+(\.\d+)*/g)?.[0]?.split('.').map(Number) || [0];
-        for (let i = 0; i < Math.max(numsA.length, numsB.length); i++) {
-            const diff = (numsA[i] || 0) - (numsB[i] || 0);
-            if (diff !== 0) return diff;
-        }
-        return 0;
-    });
-
-    return [...sortedGroups, ...sortedEntry, ...sortedSeq];
+    // NÃO ordena! Mantém a ordem original do arquivo (cada generator decide se ordena)
+    return unique;
 }
 
 /**
@@ -292,7 +262,29 @@ function findRelatedTags(document: vscode.TextDocument, _prefix: string): Proces
     // Processa TODOS os forward pointers
     const { syntheticNodes, extraConnections } = processForwardPointers(document, forwardPointers, processedRetro, _prefix);
 
-    return filterAndSortNodes(processedRetro, syntheticNodes, extraConnections);
+    // Inclui conexões diretas (//@Source->Target) como tags para manter a ordem
+    const directConnectionTags: Array<{ line: number; id: string; label: string; description: string | null; connections: Array<{ id: string; label: string }> }> = [];
+    for (const fp of forwardPointers.filter(f => f.id.includes('->'))) {
+        directConnectionTags.push({
+            line: fp.line,
+            id: fp.id,
+            label: fp.description || fp.id,
+            description: fp.description || null,
+            connections: []
+        });
+    }
+
+    // Combina tudo mantendo a ordem original
+    const allProcessed = [...processedRetro, ...syntheticNodes, ...directConnectionTags];
+    
+    // Normaliza todos os objetos para terem as mesmas propriedades
+    return allProcessed.map(node => ({
+        line: node.line,
+        id: node.id,
+        label: node.label,
+        description: 'description' in node ? (node as any).description : null,
+        connections: 'connections' in node ? (node as any).connections : []
+    })) as ProcessedNode[];
 }
 
 /**

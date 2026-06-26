@@ -25,6 +25,7 @@ export const sequenceGenerator: DiagramGenerator = {
         // Segunda passada: processa tags na ordem do arquivo
         const sortedByLine = [...tags].sort((a, b) => a.line - b.line);
         for (const tag of sortedByLine) {
+            // Processa conexões diretas: //@Source->Target:label
             if (tag.id.includes('->')) {
                 const [source, target] = tag.id.split('->');
                 if (source && target) {
@@ -58,6 +59,9 @@ export const sequenceGenerator: DiagramGenerator = {
                 }
             }
         }
+
+        // NÃO ordena! As mensagens já estão na ordem correta
+        // pois foram adicionadas na ordem das tags no arquivo
 
         for (const p of participants) mermaid += `    participant ${p}\n`;
         for (const msg of messages) mermaid += `    ${msg.from}->>${msg.to}: ${msg.label}\n`;
