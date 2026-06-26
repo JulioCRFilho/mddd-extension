@@ -10,8 +10,6 @@
  * - class.ts
  * - state.ts
  * - er.ts
- * - pie.ts
- * - journey.ts
  * 
  * Para adicionar um novo tipo:
  * 1. Crie um arquivo em ./generators/ implementando DiagramGenerator

@@ -5,8 +5,6 @@ import { sequenceGenerator } from './sequence';
 import { classGenerator } from './class';
 import { stateGenerator } from './state';
 import { erGenerator } from './er';
-import { pieGenerator } from './pie';
-import { journeyGenerator } from './journey';
 
 /** Lista de todos os generators registrados */
 const generators: DiagramGenerator[] = [
@@ -15,8 +13,6 @@ const generators: DiagramGenerator[] = [
     classGenerator,
     stateGenerator,
     erGenerator,
-    pieGenerator,
-    journeyGenerator,
 ];
 
 /**

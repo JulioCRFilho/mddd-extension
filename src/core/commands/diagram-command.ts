@@ -457,7 +457,7 @@ function validateMermaidSyntax(mermaidCode: string, diagramType: string): { vali
         }
     }
     
-    // Para gantt, pie, journey: validação mais branda
+    // Para outros tipos: validação mais branda
     // (o renderizador Mermaid cuidará dos erros)
     
     return { valid: true };
