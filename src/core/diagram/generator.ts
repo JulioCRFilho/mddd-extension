@@ -164,94 +164,70 @@ function generateFlowchart(tags: ProcessedNode[], diagramType: string): string {
 
 function generateSequenceDiagram(tags: ProcessedNode[], diagramType: string): string {
     let mermaid = `${diagramType}\n`;
-    const participants: string[] = [];
     const participantSet = new Set<string>();
-    const messages: string[] = [];
+    const participants: string[] = [];
+    const messages: Array<{ from: string; to: string; label: string }> = [];
 
-    // Mapa: sourceId → array de { targetId, label }
-    const connections = new Map<string, Array<{ targetId: string; label: string }>>();
-
+    // Primeira passada: coleta todos os participantes (grupos)
     for (const tag of tags) {
-        if (!/\d/.test(tag.id)) {
-            // Grupo = participante
+        if (!/\d/.test(tag.id) && !tag.id.includes('->')) {
             if (!participantSet.has(tag.id)) {
                 participantSet.add(tag.id);
                 participants.push(tag.id);
             }
-            
-            // Processa conexões do grupo (ex: //@Client->Server)
-            if (tag.connections && tag.connections.length > 0) {
-                if (!connections.has(tag.id)) {
-                    connections.set(tag.id, []);
-                }
-                for (const conn of tag.connections) {
-                    connections.get(tag.id)!.push({ targetId: conn.id, label: conn.label });
-                    if (!participantSet.has(conn.id)) {
-                        participantSet.add(conn.id);
-                        participants.push(conn.id);
-                    }
-                }
-            }
-            continue;
-        }
-
-        // Conexões explícitas do entry node
-        if (tag.connections && tag.connections.length > 0) {
-            // Encontra o grupo pai deste entry node
-            const groupId = tag.id.match(/^([a-zA-Z_]+)/)?.[1];
-            if (groupId && participantSet.has(groupId)) {
-                if (!connections.has(groupId)) {
-                    connections.set(groupId, []);
-                }
-                for (const conn of tag.connections) {
-                    connections.get(groupId)!.push({ targetId: conn.id, label: conn.label });
-                    // Garante que o target é um participante
-                    if (!participantSet.has(conn.id)) {
-                        participantSet.add(conn.id);
-                        participants.push(conn.id);
-                    }
-                }
-            }
         }
     }
 
-    // Groups com `->` no ID são conexões do tipo `Source->Target:label`
-    for (const tag of tags) {
+    // Segunda passada: processa tags na ordem do arquivo (por line number)
+    const sortedByLine = [...tags].sort((a, b) => a.line - b.line);
+    for (const tag of sortedByLine) {
+        // Conexões diretas: //@Source->Target:label
         if (tag.id.includes('->')) {
             const [source, target] = tag.id.split('->');
             if (source && target) {
                 const sourceClean = source.trim();
                 const targetClean = target.trim();
                 
+                // Garante que source é participante
                 if (!participantSet.has(sourceClean)) {
                     participantSet.add(sourceClean);
                     participants.push(sourceClean);
                 }
+                // Garante que target é participante
                 if (!participantSet.has(targetClean)) {
                     participantSet.add(targetClean);
                     participants.push(targetClean);
                 }
                 
-                messages.push(`    ${sourceClean}->>${targetClean}: ${tag.description || tag.label}`);
+                const label = tag.description || tag.label || 'message';
+                messages.push({ from: sourceClean, to: targetClean, label: label });
+            }
+            continue;
+        }
+
+        // Entry/sequence node com conexões
+        if (tag.connections && tag.connections.length > 0) {
+            const groupId = tag.id.match(/^([a-zA-Z_]+)/)?.[1];
+            if (groupId && participantSet.has(groupId)) {
+                for (const conn of tag.connections) {
+                    if (!participantSet.has(conn.id)) {
+                        participantSet.add(conn.id);
+                        participants.push(conn.id);
+                    }
+                    messages.push({ from: groupId, to: conn.id, label: conn.label || tag.label });
+                }
             }
         }
     }
 
-    // Gera participantes primeiro
+    // Gera participantes na ordem de aparecimento
     for (const p of participants) {
         mermaid += `    participant ${p}\n`;
     }
 
-    // Gera mensagens das conexões de entry nodes
-    for (const [sourceId, conns] of connections) {
-        for (const conn of conns) {
-            mermaid += `    ${sourceId}->>${conn.targetId}: ${conn.label || 'message'}\n`;
-        }
-    }
-
-    // Gera mensagens de grupos com ->
+    // Gera mensagens na ordem de aparecimento
     for (const msg of messages) {
-        mermaid += msg + '\n';
+        mermaid += `    ${msg.from}->>${msg.to}: ${msg.label}\n`;
     }
 
     return mermaid;
