@@ -79,9 +79,10 @@ export const erGenerator: DiagramGenerator = {
         }
 
         // Segunda passada: processa relacionamentos a partir das conexões dos nós
+        // Inclui tanto conexões de tags normais quanto conexões diretas (//@Source->Target)
         for (const tag of tags) {
-            // Processa apenas nós que têm conexões
-            if (tag.connections && tag.connections.length > 0) {
+            // Processa apenas nós que têm conexões (ignora tags com -> no ID, que são tratadas como connections)
+            if (!tag.id.includes('->') && tag.connections && tag.connections.length > 0) {
                 for (const conn of tag.connections) {
                     relationships.push(`    ${tag.id} ||--o{ ${conn.id} : ${conn.label || 'has'}`);
                 }

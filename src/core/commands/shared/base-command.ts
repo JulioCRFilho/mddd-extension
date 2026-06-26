@@ -37,7 +37,8 @@ export abstract class BaseDiagramCommand implements DiagramCommandHandler {
     }
 
     /**
-     * Encontra e processa todas as tags relacionadas ao diagrama
+     * Encontra e processa todas as tags relacionadas ao diagrama.
+     * Usa a versão simples que retorna apenas ProcessedNode[].
      */
     protected findTags(document: vscode.TextDocument, prefix: string, diagramType: string): ProcessedNode[] {
         return findRelatedTags(document, prefix, diagramType);

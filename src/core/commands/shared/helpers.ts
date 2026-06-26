@@ -135,6 +135,9 @@ function groupConsecutiveForwardPointers(
  * Caso contrário, cria um nó sintético com múltiplas conexões.
  *
  * Forward pointers com -> no ID (ex: //@Client->Server) são conexões diretas.
+ *
+ * Retorna também uma lista ordenada de conexões diretas (por linha do arquivo)
+ * para que generators (como sequence) possam respeitar a ordem original.
  */
 export function processForwardPointers(
     document: vscode.TextDocument,
@@ -143,22 +146,24 @@ export function processForwardPointers(
     _prefix: string
 ): {
     syntheticNodes: Array<{ line: number; id: string; label: string; connections: Array<{ id: string; label: string }> }>;
-    extraConnections: Array<{ sourceId: string; targetId: string; label: string }>;
+    extraConnections: Array<{ sourceId: string; targetId: string; label: string; line: number }>;
+    orderedDirectConnections: Array<{ sourceId: string; targetId: string; label: string; line: number }>;
 } {
     const syntheticNodes: Array<{ line: number; id: string; label: string; connections: Array<{ id: string; label: string }> }> = [];
-    const extraConnections: Array<{ sourceId: string; targetId: string; label: string }> = [];
+    const extraConnections: Array<{ sourceId: string; targetId: string; label: string; line: number }> = [];
+    const orderedDirectConnections: Array<{ sourceId: string; targetId: string; label: string; line: number }> = [];
 
     const regularForward: Array<{ line: number; id: string; description: string | null }> = [];
-    const directConnections: Array<{ sourceId: string; targetId: string; label: string }> = [];
 
     for (const node of forwardPointers) {
         if (node.id.includes('->')) {
             const [source, target] = node.id.split('->');
             if (source && target) {
-                directConnections.push({
+                orderedDirectConnections.push({
                     sourceId: source.trim(),
                     targetId: target.trim(),
-                    label: node.description || ''
+                    label: node.description || '',
+                    line: node.line
                 });
             }
         } else {
@@ -176,7 +181,8 @@ export function processForwardPointers(
                 extraConnections.push({
                     sourceId: existingRetro.id,
                     targetId: targetId,
-                    label: group.descriptions.get(targetId) || ''
+                    label: group.descriptions.get(targetId) || '',
+                    line: group.line
                 });
             }
         } else {
@@ -200,15 +206,7 @@ export function processForwardPointers(
         }
     }
 
-    for (const conn of directConnections) {
-        extraConnections.push({
-            sourceId: conn.sourceId,
-            targetId: conn.targetId,
-            label: conn.label
-        });
-    }
-
-    return { syntheticNodes, extraConnections };
+    return { syntheticNodes, extraConnections, orderedDirectConnections };
 }
 
 /**
@@ -218,7 +216,7 @@ export function processForwardPointers(
 export function filterAndSortNodes(
     retroNodes: Array<{ line: number; id: string; label: string; description: string | null }>,
     syntheticNodes: Array<{ line: number; id: string; label: string; connections: Array<{ id: string; label: string }> }>,
-    extraConnections: Array<{ sourceId: string; targetId: string; label: string }>
+    extraConnections: Array<{ sourceId: string; targetId: string; label: string; line: number }>
 ): ProcessedNode[] {
     const allNodes: Array<{ line: number; id: string; label: string; description: string | null; connections: Array<{ id: string; label: string }> }> = [
         ...retroNodes.map(n => ({ ...n, connections: [] as Array<{ id: string; label: string }> })),
@@ -248,14 +246,39 @@ export function filterAndSortNodes(
 }
 
 /**
+ * Resultado do pipeline de processamento de tags com ordenação preservada.
+ * Inclui os nós processados e a lista ordenada de conexões diretas
+ * (//@Source->Target) na ordem original do arquivo.
+ */
+export interface RelatedTagsResult {
+    nodes: ProcessedNode[];
+    /** Conexões diretas (//@Source->Target) na ordem original do arquivo */
+    orderedDirectConnections: Array<{ sourceId: string; targetId: string; label: string; line: number }>;
+}
+
+/**
  * Pipeline completo: filtra TODAS as tags → separa tipos → processa retro → processa forward → filtra, ordena e retorna.
  * NÃO filtra por prefixo - TODAS as tags do documento são incluídas no diagrama.
+ * Retorna apenas os nós processados (compatível com generators existentes).
  */
 export function findRelatedTags(
     document: vscode.TextDocument,
     prefix: string,
     diagramType: string
 ): ProcessedNode[] {
+    const result = findRelatedTagsWithOrder(document, prefix, diagramType);
+    return result.nodes;
+}
+
+/**
+ * Versão estendida do pipeline que também retorna conexões diretas ordenadas.
+ * Usado por diagramas que precisam da ordem exata das mensagens (ex: sequenceDiagram).
+ */
+export function findRelatedTagsWithOrder(
+    document: vscode.TextDocument,
+    prefix: string,
+    diagramType: string
+): RelatedTagsResult {
     const allNodes = filterAllNodes(document);
     const { retroPointers, forwardPointers } = splitNodes(allNodes);
 
@@ -263,7 +286,10 @@ export function findRelatedTags(
 
     // Processa TODOS os retro pointers (sem filtro de prefixo)
     const processedRetro = processRetroPointers(document, retroPointers, prefix, isERDiagram);
-    const { syntheticNodes, extraConnections } = processForwardPointers(document, forwardPointers, processedRetro, prefix);
+    const { syntheticNodes, extraConnections, orderedDirectConnections } = processForwardPointers(document, forwardPointers, processedRetro, prefix);
 
-    return filterAndSortNodes(processedRetro, syntheticNodes, extraConnections);
+    return {
+        nodes: filterAndSortNodes(processedRetro, syntheticNodes, extraConnections),
+        orderedDirectConnections
+    };
 }

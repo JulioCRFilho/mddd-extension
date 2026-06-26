@@ -35,27 +35,8 @@ export const stateGenerator: DiagramGenerator = {
             }
         }
 
-        // Processa conexões diretas (//@Source->Target)
-        for (const tag of tags) {
-            if (tag.id.includes('->')) {
-                const [source, target] = tag.id.split('->');
-                if (source && target) {
-                    const src = source.trim();
-                    const dst = target.trim();
-                    
-                    // Ignora auto-transições
-                    if (src === dst) continue;
-                    
-                    const key = `${src}->${dst}`;
-                    if (!addedEdges.has(key)) {
-                        addedEdges.add(key);
-                        transitions.push(`    ${src} --> ${dst}${tag.description ? ': ' + tag.description : ''}`);
-                    }
-                }
-            }
-        }
-
         // Processa conexões de tag.connections (vindas do pipeline de diagram-command)
+        // Inclui tanto conexões de tags normais quanto conexões diretas (//@Source->Target)
         for (const tag of tags) {
             if (!/\d/.test(tag.id) && tag.connections && tag.connections.length > 0) {
                 for (const conn of tag.connections) {
