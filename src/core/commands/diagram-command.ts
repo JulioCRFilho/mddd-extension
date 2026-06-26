@@ -68,9 +68,9 @@ function processRetroPointers(
     document: vscode.TextDocument,
     retroPointers: Array<{ line: number; id: string; description: string | null }>,
     prefix: string
-): Array<{ line: number; id: string; label: string; description: string | null }> {
+): Array<{ line: number; id: string; label: string; description: string | null; connections: Array<{ id: string; label: string }> }> {
     const prefixLower = prefix.toLowerCase();
-    const result: Array<{ line: number; id: string; label: string; description: string | null }> = [];
+    const result: Array<{ line: number; id: string; label: string; description: string | null; connections: Array<{ id: string; label: string }> }> = [];
 
     for (const node of retroPointers) {
         if (!node.id.toLowerCase().startsWith(prefixLower)) continue;
@@ -85,7 +85,8 @@ function processRetroPointers(
             line: node.line,
             id: node.id,
             label: label,
-            description: node.description
+            description: node.description,
+            connections: []
         });
     }
 
@@ -299,27 +300,30 @@ function findRelatedTags(document: vscode.TextDocument, prefix: string, diagramT
             line: node.line,
             id: node.id,
             label: label,
-            description: node.description
+            description: node.description,
+            connections: [] as Array<{ id: string; label: string }>
         };
     });
 
     // Processa TODOS os forward pointers
     const { syntheticNodes, extraConnections } = processForwardPointers(document, forwardPointers, processedRetro, prefix);
 
-    // Inclui conexões diretas (//@Source->Target) como tags para manter a ordem
-    const directConnectionTags: Array<{ line: number; id: string; label: string; description: string | null; connections: Array<{ id: string; label: string }> }> = [];
-    for (const fp of forwardPointers.filter(f => f.id.includes('->'))) {
-        directConnectionTags.push({
-            line: fp.line,
-            id: fp.id,
-            label: fp.description || fp.id,
-            description: fp.description || null,
-            connections: []
-        });
+    // Combina nós retro e sintéticos
+    const allProcessed = [...processedRetro, ...syntheticNodes];
+    
+    // Adiciona conexões extras (incluindo relacionamentos diretos) aos nós correspondentes
+    for (const conn of extraConnections) {
+        const sourceNode = allProcessed.find(n => n.id === conn.sourceId);
+        if (sourceNode) {
+            if (!sourceNode.connections) {
+                sourceNode.connections = [];
+            }
+            sourceNode.connections.push({
+                id: conn.targetId,
+                label: conn.label
+            });
+        }
     }
-
-    // Combina tudo mantendo a ordem original
-    const allProcessed = [...processedRetro, ...syntheticNodes, ...directConnectionTags];
     
     // Normaliza todos os objetos para terem as mesmas propriedades
     return allProcessed.map(node => ({

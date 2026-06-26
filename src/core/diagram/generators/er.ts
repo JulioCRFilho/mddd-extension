@@ -57,6 +57,7 @@ export const erGenerator: DiagramGenerator = {
         const entities = new Map<string, string[]>();
         const relationships: string[] = [];
 
+        // Primeira passada: coleta entidades e seus atributos
         for (const tag of tags) {
             // Ignora relacionamentos (tags com ->)
             if (tag.id.includes('->')) {
@@ -74,12 +75,15 @@ export const erGenerator: DiagramGenerator = {
                     const attrs = extractCreateTableAttributes(tag.label);
                     entities.set(tag.id, attrs);
                 }
-                
-                // Processa conexões desta entidade
-                if (tag.connections && tag.connections.length > 0) {
-                    for (const conn of tag.connections) {
-                        relationships.push(`    ${tag.id} ||--o{ ${conn.id} : ${conn.label || 'has'}`);
-                    }
+            }
+        }
+
+        // Segunda passada: processa relacionamentos a partir das conexões dos nós
+        for (const tag of tags) {
+            // Processa apenas nós que têm conexões
+            if (tag.connections && tag.connections.length > 0) {
+                for (const conn of tag.connections) {
+                    relationships.push(`    ${tag.id} ||--o{ ${conn.id} : ${conn.label || 'has'}`);
                 }
             }
         }
