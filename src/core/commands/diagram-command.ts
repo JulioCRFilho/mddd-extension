@@ -118,6 +118,8 @@ function groupConsecutiveForwardPointers(
  * Processa nós forward (//@->ID).
  * Se a linha de código já tem um nó retro associado, adiciona as conexões a esse nó.
  * Caso contrário, cria um nó sintético com múltiplas conexões.
+ * 
+ * Forward pointers com -> no ID (ex: //@Client->Server) são conexões diretas.
  */
 function processForwardPointers(
     document: vscode.TextDocument,
@@ -131,15 +133,33 @@ function processForwardPointers(
     const syntheticNodes: Array<{ line: number; id: string; label: string; connections: Array<{ id: string; label: string }> }> = [];
     const extraConnections: Array<{ sourceId: string; targetId: string; label: string }> = [];
 
-    // Agrupa forward pointers consecutivos
-    const grouped = groupConsecutiveForwardPointers(forwardPointers);
+    // Separa forward pointers comuns de conexões (//@Source->Target)
+    const regularForward: Array<{ line: number; id: string; description: string | null }> = [];
+    const directConnections: Array<{ sourceId: string; targetId: string; label: string }> = [];
+
+    for (const node of forwardPointers) {
+        if (node.id.includes('->')) {
+            // É uma conexão direta: //@Source->Target
+            const [source, target] = node.id.split('->');
+            if (source && target) {
+                directConnections.push({
+                    sourceId: source.trim(),
+                    targetId: target.trim(),
+                    label: node.description || ''
+                });
+            }
+        } else {
+            regularForward.push(node);
+        }
+    }
+
+    // Processa forward pointers comuns (//@->Target)
+    const grouped = groupConsecutiveForwardPointers(regularForward);
 
     for (const group of grouped) {
-        // Verifica se já existe um nó retro associado à mesma linha de código
         const existingRetro = findRetroNodeForLine(retroNodes, document, group.line);
 
         if (existingRetro) {
-            // Adiciona todas as conexões ao nó retro existente
             for (const targetId of group.ids) {
                 extraConnections.push({
                     sourceId: existingRetro.id,
@@ -148,7 +168,6 @@ function processForwardPointers(
                 });
             }
         } else {
-            // Cria um único nó sintético com múltiplas conexões
             const codeLine = extractCodeLine(document, group.line);
             const identifier = codeLine ? extractIdentifierBelow(codeLine) : null;
             const sourceName = identifier || 'Unknown';
@@ -166,6 +185,15 @@ function processForwardPointers(
                 label: label,
                 connections: connections
             });
+        }
+    }
+
+    // Adiciona conexões diretas (//@Source->Target)
+    for (const conn of directConnections) {
+        // Verifica se o source existe como retro node
+        const sourceExists = retroNodes.find(n => n.id === conn.sourceId);
+        if (sourceExists) {
+            extraConnections.push(conn);
         }
     }
 
@@ -313,60 +341,84 @@ export function validateAndDisplayDiagram(context: DiagramCommandContext): Diagr
 }
 
 /**
- * Validação básica de sintaxe Mermaid
+ * Validação básica de sintaxe Mermaid (baseada no tipo de diagrama)
  */
 function validateMermaidSyntax(mermaidCode: string, diagramType: string): { valid: boolean; error?: string } {
     const lines = mermaidCode.split('\n').filter(l => l.trim() && !l.trim().startsWith('subgraph'));
+    const typeKey = diagramType.toLowerCase().replace(/\s+/g, '');
     
-    // Verifica se há pelo menos um nó ou conexão
-    const hasNodes = lines.some(l => /^[A-Za-z0-9_]+\[/.test(l.trim()));
-    const hasConnections = lines.some(l => /-->/.test(l) || /---/.test(l) || /==>/.test(l));
-    
-    if (!hasNodes && !hasConnections && diagramType !== 'pie' && diagramType !== 'journey') {
-        return {
-            valid: false,
-            error: 'Nenhum nó ou conexão encontrada. Verifique se as tags estão corretas.'
-        };
-    }
-
-    // Verifica se há IDs duplicados
-    const ids = new Set<string>();
-    const idRegex = /^([A-Za-z0-9_]+)\[/;
-    
-    for (const line of lines) {
-        const match = line.match(idRegex);
-        if (match) {
-            const id = match[1];
-            if (ids.has(id)) {
-                return {
-                    valid: false,
-                    error: `ID duplicado: "${id}". Cada nó deve ter um ID único.`
-                };
-            }
-            ids.add(id);
+    // Para flowchart/graph: verifica nós N0[...] e conexões -->
+    if (typeKey.startsWith('flowchart') || typeKey.startsWith('graph')) {
+        const hasNodes = lines.some(l => /^[A-Za-z0-9_]+\[/.test(l.trim()));
+        const hasConnections = lines.some(l => /-->/.test(l) || /---/.test(l) || /==>/.test(l));
+        
+        if (!hasNodes && !hasConnections) {
+            return {
+                valid: false,
+                error: 'Nenhum nó ou conexão encontrada. Verifique se as tags estão corretas.'
+            };
         }
-    }
-
-    // Verifica se há conexões para IDs que não existem
-    const connectionRegex = /([A-Za-z0-9_]+)(-->|==>|---)([A-Za-z0-9_]+)/;
-    for (const line of lines) {
-        const match = line.match(connectionRegex);
-        if (match) {
-            const [, from, , to] = match;
-            if (!ids.has(from) && from !== 'subgraph') {
-                return {
-                    valid: false,
-                    error: `Conexão de "${from}" mas este nó não foi definido.`
-                };
-            }
-            if (!ids.has(to)) {
-                return {
-                    valid: false,
-                    error: `Conexão para "${to}" mas este nó não foi definido.`
-                };
+        
+        const ids = new Set<string>();
+        const idRegex = /^([A-Za-z0-9_]+)\[/;
+        for (const line of lines) {
+            const match = line.match(idRegex);
+            if (match) {
+                const id = match[1];
+                if (ids.has(id)) return { valid: false, error: `ID duplicado: "${id}".` };
+                ids.add(id);
             }
         }
     }
-
+    
+    // Para sequenceDiagram: verifica participantes e mensagens
+    if (typeKey.startsWith('sequencediagram')) {
+        const hasParticipants = lines.some(l => l.trim().startsWith('participant'));
+        const hasMessages = lines.some(l => l.includes('->>'));
+        if (!hasParticipants && !hasMessages) {
+            return {
+                valid: false,
+                error: 'Nenhum participante ou mensagem encontrada. Verifique as tags.'
+            };
+        }
+    }
+    
+    // Para stateDiagram: verifica states e transições
+    if (typeKey.startsWith('statediagram') || typeKey.includes('state')) {
+        const hasStates = lines.some(l => l.trim().startsWith('state'));
+        const hasTransitions = lines.some(l => l.includes('-->'));
+        if (!hasStates && !hasTransitions) {
+            return {
+                valid: false,
+                error: 'Nenhum estado ou transição encontrada. Verifique as tags.'
+            };
+        }
+    }
+    
+    // Para classDiagram: verifica classes
+    if (typeKey.startsWith('classdiagram')) {
+        const hasClasses = lines.some(l => l.trim().startsWith('class'));
+        if (!hasClasses) {
+            return {
+                valid: false,
+                error: 'Nenhuma classe encontrada. Verifique as tags.'
+            };
+        }
+    }
+    
+    // Para erDiagram: verifica entidades
+    if (typeKey.startsWith('erdiagram')) {
+        const hasEntities = lines.some(l => /\w+\s*\{/.test(l));
+        if (!hasEntities) {
+            return {
+                valid: false,
+                error: 'Nenhuma entidade encontrada. Verifique as tags.'
+            };
+        }
+    }
+    
+    // Para gantt, pie, journey: validação mais branda
+    // (o renderizador Mermaid cuidará dos erros)
+    
     return { valid: true };
 }

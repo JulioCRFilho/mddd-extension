@@ -26,3 +26,10 @@ function handleError(error) {
   console.error('API Error:', error);
   res.status(500).json({ error: 'Internal server error' });
 }
+
+// Conexões
+//@Client->Server:HTTP Request
+//@Server->Database:SQL Query
+//@Database->Server:User data
+//@Server->Client:JSON Response
+//@Client->Error:Error occurs

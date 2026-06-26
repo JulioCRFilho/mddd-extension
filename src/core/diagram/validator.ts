@@ -40,6 +40,9 @@ export function validateDiagram(
     // 1. Verifica se todos os //@-> apontam para IDs existentes
     for (const node of allNodes) {
         if (node.isArrow) {
+            // Pula conexões diretas (//@Source->Target) - não precisam ser declaradas
+            if (node.id.includes('->')) continue;
+            
             if (!declaredIdSet.has(node.id)) {
                 errors.push({
                     line: node.line,
