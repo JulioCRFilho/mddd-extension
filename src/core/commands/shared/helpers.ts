@@ -267,6 +267,22 @@ export function findRelatedTags(
     diagramType: string
 ): ProcessedNode[] {
     const result = findRelatedTagsWithOrder(document, prefix, diagramType);
+
+    // Mescla orderedDirectConnections (//@Source->Target:label) nos node.connections
+    // para que geradores como state e ER possam acessá-las via tag.connections
+    for (const conn of result.orderedDirectConnections) {
+        const sourceNode = result.nodes.find(n => n.id === conn.sourceId);
+        if (sourceNode) {
+            // Evita duplicatas (caso uma conexão já tenha sido adicionada via extraConnections)
+            const alreadyPresent = sourceNode.connections.some(
+                c => c.id === conn.targetId && c.label === conn.label
+            );
+            if (!alreadyPresent) {
+                sourceNode.connections.push({ id: conn.targetId, label: conn.label });
+            }
+        }
+    }
+
     return result.nodes;
 }
 
