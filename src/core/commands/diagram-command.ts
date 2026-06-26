@@ -188,9 +188,14 @@ function processForwardPointers(
         }
     }
 
-    // NÃO adiciona conexões diretas como extraConnections
-    // Elas serão processadas diretamente pelo generator de sequence
-    // para manter a ordem correta
+    // Adiciona conexões diretas como extraConnections para que cheguem aos generators
+    for (const conn of directConnections) {
+        extraConnections.push({
+            sourceId: conn.sourceId,
+            targetId: conn.targetId,
+            label: conn.label
+        });
+    }
 
     return { syntheticNodes, extraConnections };
 }

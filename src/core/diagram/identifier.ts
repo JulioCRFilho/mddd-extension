@@ -82,7 +82,7 @@ export function formatCodeToLabel(code: string): string {
     
     // 8. Fallback: retorna a primeira palavra se não encontrou padrão
     if (words.length > 0) {
-        return words[0].replace(/^_+/, '');
+        return words[0].replace(/_/g, '');
     }
     
     return '';
