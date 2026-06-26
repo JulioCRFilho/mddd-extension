@@ -23,20 +23,17 @@ function handleSessionExpired() {
 }
 
 // Transições (cada uma com código abaixo)
-//@LoggedOut
-//@->LoggedIn:Login success
+//@LoggedOut->LoggedIn:Login success
 function loginSuccess() {
   console.log('Login successful');
 }
 
-//@LoggedIn
-//@->SessionExpired:Token expired
+//@LoggedIn->SessionExpired:Token expired
 function tokenExpired() {
   console.log('Token expired');
 }
 
-//@SessionExpired
-//@->LoggedOut:Clear state
+//@SessionExpired->LoggedOut:Clear state
 function clearState() {
   console.log('State cleared');
 }
