@@ -5,7 +5,6 @@ import { sequenceGenerator } from './sequence';
 import { classGenerator } from './class';
 import { stateGenerator } from './state';
 import { erGenerator } from './er';
-import { ganttGenerator } from './gantt';
 import { pieGenerator } from './pie';
 import { journeyGenerator } from './journey';
 
@@ -16,7 +15,6 @@ const generators: DiagramGenerator[] = [
     classGenerator,
     stateGenerator,
     erGenerator,
-    ganttGenerator,
     pieGenerator,
     journeyGenerator,
 ];

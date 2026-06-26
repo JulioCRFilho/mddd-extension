@@ -10,7 +10,6 @@
  * - class.ts
  * - state.ts
  * - er.ts
- * - gantt.ts
  * - pie.ts
  * - journey.ts
  * 
