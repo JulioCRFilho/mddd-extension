@@ -1,0 +1,19 @@
+exports[`01 – Flowchart (01-flowchart-login.ts) > snapshot completo 1`] = `
+"flowchart TD\\n    subgraph Auth\\n        N0[\\"Validate Credentials\\"]\\n        N1[\\"Login\\"]\\n        N2[\\"Logout\\"]\\n    end\\n    subgraph Dashboard\\n        N3[\\"Show Dashboard\\"]\\n        N4[\\"Load User Data\\"]\\n    end\\n    subgraph Error\\n        N5[\\"Handle Error\\"]\\n    end\\n    N3 -->|Carregar dados| N4\\n    N1 -->|Fazer logout| N2\\n"
+`;
+
+exports[`02 – Sequence (02-sequence-api.js) > snapshot completo 1`] = `
+"sequenceDiagram\\n    participant Client\\n    participant Server\\n    participant Database\\n    participant Error\\n    Client->>Server: HTTP Request\\n    Client->>Error: Error occurs\\n    Server->>Database: SQL Query\\n    Server->>Client: JSON Response\\n    Database->>Server: User data\\n"
+`;
+
+exports[`03 – Class (03-class-diagram-oop.py) > snapshot completo 1`] = `
+"classDiagram\\n    class User {\\n    +init()\\n    +Place Order()\\n    +Make Payment()\\n    }\\n    class Order {\\n    +init()\\n    +Calculate Total()\\n    +Add Item()\\n    }\\n    class Payment {\\n    +init()\\n    +Process()\\n    +Refund()\\n    }\\n    User --> Order\\n    User --> Payment\\n"
+`;
+
+exports[`04 – State (04-state-machine-login.js) > snapshot completo 1`] = `
+"stateDiagram-v2\\n    state LoggedOut {\\n        DisplayForm: Display Form\\n    }\\n    state LoggedIn {\\n        LoadUserData: Load User Data\\n        RenderDashboard: Render Dashboard\\n    }\\n    state SessionExpired {\\n        ClearSession: Clear Session\\n        RedirectToLogin: Redirect To Login\\n    }\\n    LoggedOut --> LoggedIn: Login success\\n    LoggedIn --> SessionExpired: Token expired\\n    SessionExpired --> LoggedOut: Clear state\\n"
+`;
+
+exports[`05 – ER (05-er-database.sql) > snapshot completo 1`] = `
+"erDiagram\\n    User {\\n        string id\\n        string name\\n        string email\\n    }\\n    Order {\\n        string id\\n        string user_id\\n        string total\\n        string created_at\\n    }\\n    Product {\\n        string id\\n        string name\\n        string price\\n        string stock\\n    }\\n    OrderItem {\\n        string id\\n        string order_id\\n        string product_id\\n        string quantity\\n    }\\n    User ||--o{ Order : places\\n    Order ||--o{ OrderItem : contains\\n    OrderItem ||--o{ Product : references\\n"
+`;

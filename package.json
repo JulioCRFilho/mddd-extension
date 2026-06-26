@@ -32,7 +32,8 @@
   "scripts": {
     "vscode:prepublish": "npm run compile",
     "compile": "tsc -p ./",
-    "watch": "tsc -watch -p ./"
+    "watch": "tsc -watch -p ./",
+    "test": "npm run compile && NODE_PATH=test/mocks node --test test/mddd-outputs.test.mjs"
   },
   "devDependencies": {
     "@types/node": "^18.0.0",
