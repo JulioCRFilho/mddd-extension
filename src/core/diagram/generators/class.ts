@@ -26,7 +26,15 @@ export const classGenerator: DiagramGenerator = {
             if (tag.connections && tag.connections.length > 0) {
                 for (const conn of tag.connections) {
                     const arrow = conn.arrowPrefix || '-->';
-                    relationships.push(`${tag.id.match(/^([a-zA-Z_]+)/)?.[1] || tag.id} ${arrow} ${conn.id}`);
+                    const className = tag.id.match(/^([a-zA-Z_]+)/)?.[1] || tag.id;
+                    const label = conn.label ? ` : ${conn.label}` : '';
+                    // Inheritance (<|--) needs swapped order because //@<|--Parent:inherits
+                    // means "Child inherits from Parent", but Mermaid requires Parent <|-- Child
+                    if (arrow === '<|--') {
+                        relationships.push(`${conn.id} ${arrow} ${className}${label}`);
+                    } else {
+                        relationships.push(`${className} ${arrow} ${conn.id}${label}`);
+                    }
                 }
             }
         }

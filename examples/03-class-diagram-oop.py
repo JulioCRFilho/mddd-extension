@@ -101,30 +101,10 @@ class Product:
             return 0.0
         return sum(r.rating for r in self.reviews) / len(self.reviews)
 
-//@Category
-class Category:
-    //@Category1:__init__ method
-    def __init__(self, name: str, parent = None):
-        self.name = name
-        self.parent = parent
-        self.subcategories: list[Category] = []
-        self.products: list[Product] = []
-
-    //@Category1.1:add_product method
-    //@--Product:contains
-    def add_product(self, product):
-        if product not in self.products:
-            self.products.append(product)
-
-    //@Category1.2:add_subcategory method
-    //@--Category:nested
-    def add_subcategory(self, category):
-        category.parent = self
-        self.subcategories.append(category)
-
 //@ShoppingCart
 class ShoppingCart:
     //@ShoppingCart1:__init__ method
+    //@--Customer:belongs to
     def __init__(self, customer):
         self.customer = customer
         self.items: list[CartItem] = []
@@ -145,6 +125,7 @@ class ShoppingCart:
 //@CartItem
 class CartItem:
     //@CartItem1:__init__ method
+    //@--Product:references
     def __init__(self, product, quantity: int):
         self.product = product
         self.quantity = quantity
@@ -153,13 +134,12 @@ class CartItem:
 //@Order
 class Order:
     //@Order1:__init__ method
+    //@--Address:shipped to
     def __init__(self, user, items, shipping_address):
         self.user = user
         self.items = items
         self.shipping_address = shipping_address
         self.status = "pending"
-        self.payment = None
-        self.shipping = None
 
     //@Order1.1:calculate_total method
     def calculate_total(self) -> float:
@@ -178,51 +158,11 @@ class Order:
         self.status = "confirmed"
         return True
 
-//@Payment
-class Payment:
-    //@Payment1:__init__ method
-    def __init__(self, order, method: str):
-        self.order = order
-        self.method = method
-        self.status = "pending"
-        self.amount = order.calculate_total()
-        order.payment = self
-
-    //@Payment1.1:process method
-    def process(self) -> bool:
-        success = self.gateway.charge(self.amount, self.method)
-        self.status = "completed" if success else "failed"
-        return success
-
-    //@Payment1.2:refund method
-    def refund(self, amount = None):
-        refund_amount = amount if amount else self.amount
-        self.gateway.refund(self.transaction_id, refund_amount)
-        self.status = "refunded"
-
-//@Shipping
-class Shipping:
-    //@Shipping1:__init__ method
-    def __init__(self, order, carrier: str, tracking_code = None):
-        self.order = order
-        self.carrier = carrier
-        self.tracking_code = tracking_code
-        self.status = "preparing"
-        order.shipping = self
-
-    //@Shipping1.1:update_tracking method
-    def update_tracking(self, code: str):
-        self.tracking_code = code
-        self.status = "in_transit"
-
-    //@Shipping1.2:mark_delivered method
-    def mark_delivered(self):
-        self.status = "delivered"
-        self.order.status = "delivered"
-
 //@Review
 class Review:
     //@Review1:__init__ method
+    //@--Customer:written by
+    //@--Product:reviews
     def __init__(self, customer, product, rating: int, comment: str):
         self.customer = customer
         self.product = product

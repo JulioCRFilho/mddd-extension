@@ -136,13 +136,13 @@ describe('03 – Class (03-class-diagram-oop.py)', () => {
     assert.ok(out.startsWith('classDiagram\n'));
   });
 
-  it('contém classes User, Order e Payment', () => {
-    for (const c of ['class User', 'class Order', 'class Payment'])
+  it('contém classes User, Order e Product', () => {
+    for (const c of ['class User', 'class Order', 'class Product'])
       assert.ok(out.includes(c), `classe ${c}`);
   });
 
   it('contém métodos Python', () => {
-    for (const m of ['+init()', '+Place Order()', '+Calculate Total()', '+Process()'])
+    for (const m of ['+init()', '+Place Order()', '+Calculate Total()', '+Add Item()'])
       assert.ok(out.includes(m), `método ${m}`);
   });
 
