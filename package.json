@@ -39,5 +39,9 @@
     "@types/node": "^18.0.0",
     "@types/vscode": "^1.74.0",
     "typescript": "^5.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/JulioCRFilho/mddd-extension.git"
   }
 }

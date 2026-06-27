@@ -1,79 +1,79 @@
-# MDDD Hover Extension
+# MDDD Extension
 
-Extensão VS Code que exibe diagramas Mermaid ao fazer hover em comentários `//@ID`.
+<p align="center"><img src="assets/icon.png" width="128" alt="MDDD icon"></p>
 
-## Funcionalidades
+VS Code extension that renders Mermaid diagrams from `//@` tags embedded in code comments.
 
-- Detecta comentários no formato `//@ID` (ex: `//@Login1.1`)
-- Identifica automaticamente o identificador (classe/função/variável) na linha imediatamente abaixo
-- Transforma nomes camelCase/snake_case em labels legíveis (ex: `_tryLogin` → `Try Login`)
-- Escaneia o arquivo em busca de todas as tags relacionadas pelo prefixo
-- Gera diagrama Mermaid `graph TD` conectando as entidades hierarquicamente
-- Exibe o diagrama diretamente no hover do VS Code (renderização nativa de Mermaid)
+## Features
 
-## Como usar
+- Detects comments in the format `//@ID` (e.g. `//@Login1`, `//@Auth2`, `//@Entry1:Handle login`).
+- Every `//@...` line now receives a gutter icon for quick navigation.
+- Groups related tags by prefix and builds the appropriate Mermaid diagram type.
+- Supports multiple diagram types declared via `//@::<type>` on the first line.
+- Renders diagrams natively in VS Code hover (Mermaid support built into the editor).
 
-1. Instale as dependências: `npm install`
-2. Compile o projeto: `npm run compile`
-3. Abra o projeto no VS Code e pressione `F5` para iniciar a extensão em modo de desenvolvimento
-4. Em um arquivo de código, adicione comentários no formato `//@ID`:
+## Supported diagram types
+
+- `graph LR` / `graph TD` — flowchart
+- `sequenceDiagram` — sequence
+- `classDiagram` — class/domain model
+- `stateDiagram-v2` — state machine
+- `erDiagram` — entity-relationship
+
+## Usage
+
+1. Install dependencies: `npm install`
+2. Compile: `npm run compile`
+3. Run the extension in development: `F5` in VS Code (`Developer: Run and Debug`)
+4. Add `//@` tags in your code files:
 
 ```typescript
-//@Login1.1
-function _tryLogin() {
-    // código
-}
+//@::graph LR
 
-//@Login1.2
-function _validateCredentials() {
-    // código
-}
-
-//@Login1.3
-function _redirectToDashboard() {
-    // código
+//@Entry
+class LoginController {
+  //@Entry1:Handle login
+  async handleLogin(email, password) {
+    //@->Auth1:Check credentials
+    await auth.authenticate(email, password);
+    //@->Error1:Invalid credentials
+    return error.invalidCredentials();
+  }
 }
 ```
 
-5. Faça hover sobre qualquer comentário `//@Login*` para ver o diagrama Mermaid com todas as tags relacionadas
+5. Hover over any `//@` line to see the generated Mermaid diagram with related tags.
 
-## Exemplo de saída
+## Running tests
 
-Ao fazer hover em `//@Login1.1`, a extensão exibirá:
-
-```
-Tag: //@Login1.1
-Prefixo: Login
-Tags relacionadas: 3
-
----
-
-```mermaid
-graph TD
-    N0["Try Login"]
-    N0 --> N1["Validate Credentials"]
-    N1 --> N2["Redirect To Dashboard"]
-```
+```bash
+npm run compile
+NODE_PATH=test/mocks node --test test/mddd-outputs.test.mjs
 ```
 
-## Estrutura do projeto
+Update snapshots after changes:
 
-```
-mddd-extension/
-├── package.json          # Configuração da extensão
-├── tsconfig.json         # Configuração TypeScript
-├── extension.ts          # Código principal da extensão
-├── out/
-│   └── extension.js      # Código compilado
-└── README.md            # Este arquivo
+```bash
+NODE_PATH=test/mocks node --test-update-snapshots --test test/mddd-outputs.test.mjs
 ```
 
-## Tecnologias
+## MAD skill
+
+This project includes `.agents/skills/mad/SKILL.md`, the **MAD — Mermaid Auto-Doccing** skill.
+It defines:
+
+- `//@` invariants and icon rules
+- Supported diagram types
+- Node and connection rules per diagram type
+- Guidelines to keep diagrams clean and concise
+- When to decouple or abstract complex diagrams
+
+## Technologies
 
 - TypeScript
 - VS Code Extension API
-- Mermaid (renderização nativa do VS Code)
+- Mermaid (native VS Code hover rendering)
 
-## Licença
+## License
 
 MIT
