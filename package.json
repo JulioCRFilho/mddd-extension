@@ -1,8 +1,8 @@
 {
-  "name": "mddd-hover-extension",
-  "displayName": "MDDD Hover Extension",
-  "description": "Extensão que exibe diagramas Mermaid ao hover em comentários //@ID",
-  "version": "1.0.0",
+  "name": "mad",
+  "displayName": "Mermaid Auto-Doccing",
+  "description": "Extension to automatically generate documentation from Mermaid diagrams in VS Code.",
+  "version": "1.0.1",
   "engines": {
     "vscode": "^1.74.0"
   },
@@ -52,6 +52,7 @@
     "diagram",
     "documentation",
     "autodoc",
-    "mddd"
+    "mddd",
+    "sdd"
   ]
 }
