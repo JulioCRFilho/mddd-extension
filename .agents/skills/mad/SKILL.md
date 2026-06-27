@@ -1,6 +1,5 @@
 ---
 name: mad
-version: 1.0.0
 description: Mermaid Auto-Doccing — rules and usage of MDDD tags to generate Mermaid diagrams from //@ comments in code.
 ---
 
