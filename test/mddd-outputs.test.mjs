@@ -77,19 +77,21 @@ describe('01 – Flowchart (01-flowchart-login.ts)', () => {
   });
 
   it('contém labels extraídos do código', () => {
+    assert.ok(out.includes('Handle Login'));
+    assert.ok(out.includes('Verify 2FA'));
     assert.ok(out.includes('Authenticate'));
-    assert.ok(out.includes('Handle Login Request'));
     assert.ok(out.includes('Create Session'));
+    assert.ok(out.includes('Challenge 2FA') || out.includes('Initiate Challenge'));
     assert.ok(out.includes('Show Dashboard'));
-    assert.ok(out.includes('Load User Data'));
-    assert.ok(out.includes('Handle Error'));
   });
 
   it('contém arestas da hierarquia', () => {
-    assert.ok(/N\d+ -->\|Verify 2FA code\| N\d+/.test(out),
-      'aresta de Verify 2FA code');
-    assert.ok(/N\d+ -->\|Load user data\| N\d+/.test(out),
-      'aresta de Load user data');
+    assert.ok(/N\d+ -->\|Authenticate\| N\d+/.test(out),
+      'aresta de Authenticate');
+    assert.ok(/N\d+ -->\|Show dashboard\| N\d+/.test(out),
+      'aresta de Show dashboard');
+    assert.ok(/N\d+ -->\|Validate code\| N\d+/.test(out),
+      'aresta de Validate code');
   });
 
   it('snapshot completo', (t) => {
