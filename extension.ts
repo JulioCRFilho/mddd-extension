@@ -7,11 +7,11 @@ import { MADFoldingProvider } from './src/core/ui/folding-provider';
 import { filterAllNodes, readDiagramType } from './src/core/diagram/parser';
 
 export function activate(context: vscode.ExtensionContext) {
-    console.log('MAD está ativa');
+    console.log('MAD is active');
 
     const iconPath = vscode.Uri.joinPath(context.extensionUri, 'assets', 'icon.png').fsPath;
 
-    // ── Decoration Manager (ícone na gutter) ──
+    // ── Decoration Manager (gutter icon) ──
     const decorationManager = new MADDecorationManager(iconPath);
     context.subscriptions.push(decorationManager);
 
@@ -20,7 +20,7 @@ export function activate(context: vscode.ExtensionContext) {
         decorationManager.apply(editor, decorations);
     };
 
-    // ── Comando: Abrir diagrama ──
+    // ── Command: Open diagram ──
     const showDiagramCommand = vscode.commands.registerCommand(
         'mad.showDiagram',
         (lineNumber: number) => {
@@ -50,7 +50,7 @@ export function activate(context: vscode.ExtensionContext) {
     );
     context.subscriptions.push(showDiagramCommand);
 
-    // ── Comando: Navegar para linha específica ──
+    // ── Command: Navigate to specific line ──
     const goToLineCommand = vscode.commands.registerCommand(
         'mad.goToLine',
         (lineNumber: number) => {
@@ -65,7 +65,7 @@ export function activate(context: vscode.ExtensionContext) {
     );
     context.subscriptions.push(goToLineCommand);
 
-    // ── Comando: Abrir diagrama do prefixo sob o cursor ──
+    // ── Command: Open diagram for prefix under cursor ──
     const showDiagramAtCursorCommand = vscode.commands.registerCommand(
         'mad.showDiagramAtCursor',
         () => {
@@ -78,7 +78,7 @@ export function activate(context: vscode.ExtensionContext) {
     );
     context.subscriptions.push(showDiagramAtCursorCommand);
 
-    // ── Comando: Mostrar estatísticas do diagrama ──
+    // ── Command: Show diagram statistics ──
     const showStatsCommand = vscode.commands.registerCommand(
         'mad.showStats',
         () => {
@@ -198,7 +198,7 @@ export function activate(context: vscode.ExtensionContext) {
             const fileKey = document.uri.toString();
             const cooldownUntil = unfoldCooldowns.get(fileKey);
             
-            // Se está em cooldown, não folda
+            // If on cooldown, don't fold
             if (cooldownUntil && Date.now() < cooldownUntil) return;
 
             setTimeout(() => {
@@ -223,7 +223,7 @@ export function activate(context: vscode.ExtensionContext) {
         }
     }, 60 * 1000);
 
-    // ── DocumentSymbol Provider: outline com árvore de tags ──
+    // ── DocumentSymbol Provider: outline with tag tree ──
     context.subscriptions.push(
         vscode.languages.registerDocumentSymbolProvider(
             [
@@ -248,7 +248,7 @@ export function activate(context: vscode.ExtensionContext) {
         )
     );
 
-    // ── Click detection para abrir diagrama ──
+    // ── Click detection to open diagram ──
     let lastClickLine = -1;
     const clickDetection = vscode.window.onDidChangeTextEditorSelection(event => {
         const editor = event.textEditor;
@@ -271,7 +271,7 @@ export function activate(context: vscode.ExtensionContext) {
     });
     context.subscriptions.push(clickDetection);
 
-    // ── Listeners de mudança ──
+    // ── Change listeners ──
     context.subscriptions.push(vscode.window.onDidChangeActiveTextEditor(editor => {
         if (editor) updateDecorations(editor);
     }));
@@ -281,12 +281,12 @@ export function activate(context: vscode.ExtensionContext) {
         if (editor && event.document === editor.document) updateDecorations(editor);
     }));
 
-    // ── Atualiza decorações iniciais ──
+    // ── Update initial decorations ──
     if (vscode.window.activeTextEditor) {
         updateDecorations(vscode.window.activeTextEditor);
     }
 }
 
 export function deactivate() {
-    console.log('MAD foi desativada');
+    console.log('MAD has been deactivated');
 }

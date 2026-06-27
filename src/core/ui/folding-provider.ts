@@ -1,8 +1,8 @@
 import * as vscode from 'vscode';
 
 /**
- * FoldingRangeProvider que cria regiões de folding para cada tag //@ consecutiva.
- * Permite ao usuário esconder/expandir blocos de tags com 1 clique.
+ * FoldingRangeProvider that creates folding regions for each consecutive //@ tag.
+ * Allows the user to hide/expand tag blocks with 1 click.
  */
 export class MADFoldingProvider implements vscode.FoldingRangeProvider {
     provideFoldingRanges(
@@ -18,7 +18,7 @@ export class MADFoldingProvider implements vscode.FoldingRangeProvider {
         while (i < lines.length) {
             const line = lines[i];
 
-            // Detecta início de tag //@
+            // Detects start of //@ tag
             const isTag = line.match(/\/\/@([\w.]+)/);
             if (!isTag) {
                 i++;
@@ -31,9 +31,9 @@ export class MADFoldingProvider implements vscode.FoldingRangeProvider {
             while (endLine < lines.length && lines[endLine].match(/\/\/@/)) {
                 endLine++;
             }
-            endLine--; // última linha de tag
+            endLine--; // last tag line
 
-            // Cria folding range apenas para as tags, sem incluir código abaixo
+            // Create folding range only for tags, without including code below
             if (endLine > startLine) {
                 ranges.push(new vscode.FoldingRange(
                     startLine,
@@ -41,7 +41,7 @@ export class MADFoldingProvider implements vscode.FoldingRangeProvider {
                     vscode.FoldingRangeKind.Region
                 ));
             }
-            // Não cria folding para tag única (apenas uma linha)
+            // Don\t create folding for single tag (one line only)
 
             i = endLine + 1;
         }

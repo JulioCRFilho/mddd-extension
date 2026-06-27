@@ -2,18 +2,18 @@ import { ProcessedNode } from '../parser';
 import { DiagramGenerator } from './types';
 
 /**
- * Extrai atributos de um bloco CREATE TABLE
+ * Extract attributes from a CREATE TABLE block
  */
 function extractCreateTableAttributes(code: string): string[] {
     const attrs: string[] = [];
     
-    // Encontra o bloco entre parênteses
+    // Find the block between parentheses
     const match = code.match(/CREATE\s+TABLE\s+\w+\s*\(([\s\S]+)\)/i);
     if (!match) return attrs;
     
     const columnsBlock = match[1];
     
-    // Split inteligente por vírgulas, respeitando parênteses
+    // Smart split by commas, respecting parentheses
     const lines: string[] = [];
     let current = '';
     let depth = 0;
@@ -32,13 +32,13 @@ function extractCreateTableAttributes(code: string): string[] {
     if (current.trim()) lines.push(current.trim());
     
     for (const line of lines) {
-        // Ignora linhas que são constraints (PRIMARY KEY, FOREIGN KEY, etc.)
-        // Inclui FULLTEXT que é um tipo de índice, não coluna
+        // Ignore lines that are constraints (PRIMARY KEY, FOREIGN KEY, etc.)
+        // Includes FULLTEXT which is an index type, not a column
         if (/^(PRIMARY|FOREIGN|UNIQUE|CHECK|CONSTRAINT|INDEX|KEY|FULLTEXT)/i.test(line)) {
             continue;
         }
         
-        // Extrai o nome da coluna (primeira palavra antes de espaço ou parêntese)
+        // Extract the column name (first word before space or parenthesis)
         const columnMatch = line.match(/^(\w+)/);
         if (columnMatch) {
             attrs.push(columnMatch[1]);
@@ -58,20 +58,20 @@ export const erGenerator: DiagramGenerator = {
         const entities = new Map<string, string[]>();
         const relationships: string[] = [];
 
-        // Primeira passada: coleta entidades e seus atributos
+        // First pass: collect entities and their attributes
         for (const tag of tags) {
-            // Ignora relacionamentos (tags com ->)
+            // Ignore relationships (tags with ->)
             if (tag.id.includes('->')) {
                 continue;
             }
 
-            // Entidades (IDs sem números)
+            // Entities (IDs without numbers)
             if (!/\d/.test(tag.id)) {
                 if (!entities.has(tag.id)) {
                     entities.set(tag.id, []);
                 }
                 
-                // Extrai atributos do código SQL no label
+                // Extract attributes from the SQL code in the label
                 if (tag.label && tag.label.toUpperCase().startsWith('CREATE TABLE')) {
                     const attrs = extractCreateTableAttributes(tag.label);
                     entities.set(tag.id, attrs);
@@ -79,18 +79,18 @@ export const erGenerator: DiagramGenerator = {
             }
         }
 
-        // Segunda passada: processa relacionamentos a partir das conexões dos nós
-        // Inclui tanto conexões de tags normais quanto conexões diretas (//@Source->Target)
+        // Second pass: process relationships from node connections
+        // Includes both normal tag connections and direct connections (//@Source->Target)
         for (const tag of tags) {
-            // Processa apenas nós que têm conexões (ignora tags com -> no ID, que são tratadas como connections)
+            // Process only nodes that have connections (ignores tags with -> in the ID, which are treated as connections)
             if (!tag.id.includes('->') && tag.connections && tag.connections.length > 0) {
                 for (const conn of tag.connections) {
                     const label = conn.label || 'has';
-                    // Labels com espaços ou caracteres especiais (/, etc.) precisam de aspas no Mermaid
+                    // Labels with spaces or special characters (/, etc.) need quotes in Mermaid
                     const needsQuotes = /[\s\/\\,:;!@#$%^&*()+=]/.test(label);
                     const formattedLabel = needsQuotes ? `"${label}"` : label;
 
-                    // Inferir cardinalidade a partir do label
+                    // Infer cardinality from label
                     // "has one", "billing", "shipping" = one-to-one (||--||)
                     // demais casos = one-to-many (||--o{)
                     let leftSide = tag.id;
@@ -101,8 +101,8 @@ export const erGenerator: DiagramGenerator = {
                         cardinality = '||--||';
                     }
 
-                    // "references" indica relação child->parent (FK do child aponta pro parent)
-                    // Invertemos a direção para mostrar parent->children no diagrama
+                    // "references" indicates child->parent relationship (child FK points to parent)
+                    // Invert direction to show parent->children in the diagram
                     if (/^references$/i.test(label.trim())) {
                         leftSide = conn.id;
                         rightSide = tag.id;
@@ -113,7 +113,7 @@ export const erGenerator: DiagramGenerator = {
             }
         }
 
-        // Gera o Mermaid
+        // Generate Mermaid
         for (const [entityName, attrs] of entities) {
             mermaid += `    ${entityName} {\n`;
             for (const attr of attrs) {

@@ -1,7 +1,7 @@
-# Dependências
+# Dependencies
 node_modules/
 
-# Arquivos compilados
+# Compiled files
 out/
 *.js.map
 
@@ -13,17 +13,17 @@ out/
 *.log
 npm-debug.log*
 
-# Sistema operacional
+# Operating system
 .DS_Store
 Thumbs.db
 
 # TypeScript
 *.tsbuildinfo
 
-# Testes
+# Tests
 coverage/
 .nyc_output/
 
-# Ambiente
+# Environment
 .env
 .env.local

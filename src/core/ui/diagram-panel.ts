@@ -21,7 +21,7 @@ export class MADDiagramPanel {
 
         const panel = vscode.window.createWebviewPanel(
             MADDiagramPanel.viewType,
-            'Diagrama Mermaid',
+            'Mermaid Diagram',
             besideColumn,
             {
                 enableScripts: true,
@@ -64,7 +64,7 @@ export class MADDiagramPanel {
             text: '#333333'
         };
 
-        // Escapa o código Mermaid para inserção segura no JS
+        // Escapes the Mermaid code for safe insertion in JS
         const escapedMermaidCode = mermaidCode
             .replace(/\\/g, '\\\\')
             .replace(/`/g, '\\`')
@@ -75,7 +75,7 @@ export class MADDiagramPanel {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Diagrama Mermaid</title>
+    <title>Mermaid Diagram</title>
     <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/html-to-image@1.11.11/dist/html-to-image.min.js"></script>
     <style>
@@ -172,7 +172,7 @@ export class MADDiagramPanel {
 </head>
 <body>
     <div class="toolbar">
-        <button onclick="copyToClipboard()" title="Copiar código Mermaid">📋 Copy</button>
+        <button onclick="copyToClipboard()" title="Copy Mermaid code">📋 Copy</button>
         <button class="secondary" onclick="exportAsSVG()" title="Exportar como SVG">📥 SVG</button>
         <button class="secondary" onclick="exportAsPNG()" title="Exportar como PNG">🖼 PNG</button>
         <div class="zoom-controls">

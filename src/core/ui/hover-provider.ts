@@ -2,8 +2,8 @@ import * as vscode from 'vscode';
 import { filterAllNodes } from '../diagram/parser';
 
 /**
- * HoverProvider que exibe informações detalhadas sobre tags //@ ao passar o mouse.
- * Mostra o ID, label formatado e preview de código abaixo da tag.
+ * HoverProvider that displays detailed info about //@ tags on mouse hover.
+ * Shows the ID, formatted label, and code preview below the tag.
  */
 export class MADHoverProvider implements vscode.HoverProvider {
     provideHover(document: vscode.TextDocument, position: vscode.Position): vscode.ProviderResult<vscode.Hover> {
@@ -16,7 +16,7 @@ export class MADHoverProvider implements vscode.HoverProvider {
         const fullId = tagMatch[1];
         const description = tagMatch[2]?.trim();
 
-        // Extrai linha de código abaixo da tag (pulando outras tags consecutivas)
+        // Extract code line below the tag (pulando outras tags consecutivas)
         const text = document.getText();
         const lines = text.split(/\r?\n/);
         let codeLine: string | null = null;
@@ -28,68 +28,68 @@ export class MADHoverProvider implements vscode.HoverProvider {
             codeLine = lines[j].trim();
         }
 
-        // Determina o tipo da tag
+        // Determines the tag type
         const isArrow = lineText.includes('//@->');
         const isGroup = !/\d/.test(fullId);
         const isEntry = /^[a-zA-Z_]+[0-9]+$/.test(fullId);
         const isSequence = /\.[0-9]+/.test(fullId);
 
-        // Monta as partes do hover
+        // Builds the hover parts
         const markdownParts: string[] = [];
 
-        // Título
+        // Title
         markdownParts.push(`**🔖 MAD Tag**`);
 
-        // Tipo da tag
+        // Tag type
         const tagType = isArrow ? '➡️ Forward Pointer' :
             isGroup ? '📦 Group' :
             isEntry ? '🔤 Entry Node' :
             '🔁 Sequence Node';
-        markdownParts.push(`**Tipo:** ${tagType}`);
+        markdownParts.push(`**Type:** ${tagType}`);
 
         // ID da tag
         markdownParts.push(`**ID:** \`${fullId}\``);
 
-        // Descrição inline se existir
+        // Inline description if it exists
         if (description) {
-            markdownParts.push(`**Descrição:** ${description}`);
+            markdownParts.push(`**Description:** ${description}`);
         }
 
-        // Código abaixo da tag
+        // Code below tag
         if (codeLine) {
             const code = codeLine.length > 80 ? codeLine.substring(0, 80) + '...' : codeLine;
             markdownParts.push('');
-            markdownParts.push('**Código:**');
+            markdownParts.push('**Code:**');
             markdownParts.push('```\n' + code + '\n```');
         }
 
-        // Hierarquia para sequence nodes
+        // Hierarchy for sequence nodes
         if (isSequence) {
             const parts = fullId.split('.');
             const parentId = parts.slice(0, -1).join('.');
             markdownParts.push('');
-            markdownParts.push(`**⬆️ Pai:** \`${parentId}\``);
+            markdownParts.push(`**⬆️ Parent:** \`${parentId}\``);
         }
 
-        // Para entry nodes, mostra o grupo
+        // For entry nodes, shows the group
         if (isEntry) {
             const groupMatch = fullId.match(/^([a-zA-Z_]+)\d+$/);
             if (groupMatch) {
                 markdownParts.push('');
-                markdownParts.push(`**📂 Grupo:** \`${groupMatch[1]}\``);
+                markdownParts.push(`**📂 Group:** \`${groupMatch[1]}\``);
             }
         }
 
-        // Para forward pointers, mostra o destino
+        // For forward pointers, shows the target
         if (isArrow) {
             markdownParts.push('');
-            markdownParts.push(`**🎯 Destino:** \`${fullId}\``);
+            markdownParts.push(`**🎯 Target:** \`${fullId}\``);
         }
 
-        // Ação de clique
+        // Click action
         markdownParts.push('');
         markdownParts.push('---');
-        markdownParts.push('*Clique para abrir o diagrama*');
+        markdownParts.push('*Click to open the diagram*');
 
         return new vscode.Hover(
             new vscode.MarkdownString(markdownParts.join('\n\n')),

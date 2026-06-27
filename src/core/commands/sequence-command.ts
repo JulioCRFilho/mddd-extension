@@ -6,12 +6,12 @@ import { findRelatedTagsWithOrder } from './shared/helpers';
 import { readDiagramType } from '../diagram/parser';
 
 /**
- * Command handler para diagramas do tipo Sequence Diagram.
- * Suporta: sequenceDiagram
+ * Command handler for Sequence Diagram type.
+ * Supports: sequenceDiagram
  *
- * Sobrescreve o pipeline padrão para garantir que as mensagens
- * (conexões //@Source->Target) sejam renderizadas na ordem exata
- * em que aparecem no arquivo, independente de agrupamento por nó fonte.
+ * Overrides the default pipeline to ensure messages
+ * (//@Source->Target connections) are rendered in the exact order
+ * they appear in the file, regardless of grouping by source node.
  */
 export class SequenceCommand extends BaseDiagramCommand {
     readonly type = 'sequence';
@@ -21,8 +21,8 @@ export class SequenceCommand extends BaseDiagramCommand {
     }
 
     /**
-     * Gera o código Mermaid do sequence diagram respeitando a ordem
-     * original das conexões no arquivo.
+     * Generates the Mermaid sequence diagram code respecting the
+     * original order of connections in the file.
      */
     private generateSequenceMermaid(
         document: vscode.TextDocument,
@@ -37,12 +37,12 @@ export class SequenceCommand extends BaseDiagramCommand {
         const participants: string[] = [];
         const messages: Array<{ from: string; to: string; label: string }> = [];
 
-        // Primeira passada: coleta todos os participantes (grupos) e entry nodes,
-        // na ordem em que aparecem no arquivo
+        // First pass: collect all participants (groups) and entry nodes,
+        // in the order they appear in the file
         const sortedByLine = [...nodes].sort((a, b) => a.line - b.line);
 
         for (const tag of sortedByLine) {
-            // Coleta grupos (IDs sem números)
+            // Collect groups (IDs without numbers)
             if (!/\d/.test(tag.id) && !tag.id.includes('->')) {
                 if (!participantSet.has(tag.id)) {
                     participantSet.add(tag.id);
@@ -51,8 +51,8 @@ export class SequenceCommand extends BaseDiagramCommand {
             }
         }
 
-        // Segunda passada: processa conexões das tags (//@->Target)
-        // na ordem das linhas do arquivo
+        // Second pass: process tag connections (//@->Target)
+        // in file line order
         for (const tag of sortedByLine) {
             if (tag.connections && tag.connections.length > 0) {
                 const groupId = tag.id.match(/^([a-zA-Z_]+)/)?.[1];
@@ -72,8 +72,8 @@ export class SequenceCommand extends BaseDiagramCommand {
             }
         }
 
-        // Terceira passada: conexões diretas (//@Source->Target)
-        // na ORDEM ORIGINAL DO ARQUIVO
+        // Third pass: direct connections (//@Source->Target)
+        // in ORIGINAL FILE ORDER
         for (const conn of orderedDirectConnections) {
             const sourceClean = conn.sourceId;
             const targetClean = conn.targetId;
@@ -94,7 +94,7 @@ export class SequenceCommand extends BaseDiagramCommand {
             });
         }
 
-        // Gera código Mermaid
+        // Generate Mermaid code
         for (const p of participants) {
             mermaid += `    participant ${p}\n`;
         }
@@ -106,35 +106,35 @@ export class SequenceCommand extends BaseDiagramCommand {
     }
 
     /**
-     * Sobrescreve execute() para usar a ordem correta das conexões.
+     * Overrides execute() to use the correct connection order.
      */
     execute(context: DiagramCommandContext): DiagramResult {
         const { document, prefix, extensionUri } = context;
 
         const diagramType = this.readDiagramType(document);
 
-        // Validação MAD
+        // MAD validation
         const validation = this.validateMAD(document, prefix);
         if (!validation.valid) {
             return { success: false, errorMessage: validation.error };
         }
 
-        // Gera código Mermaid com ordenação correta
+        // Generate Mermaid code with correct ordering
         const mermaidCode = this.generateSequenceMermaid(document, prefix, diagramType);
 
-        // Pré-display hook
+        // Pre-display hook
         const processedCode = this.beforeDisplay(mermaidCode, diagramType);
 
-        // Validação Mermaid
+        // Mermaid validation
         const mermaidValidation = this.validateMermaid(processedCode, diagramType);
         if (!mermaidValidation.valid) {
             return {
                 success: false,
-                errorMessage: `Erro de sintaxe Mermaid:\n${mermaidValidation.error}`
+                errorMessage: `Mermaid syntax error:\n${mermaidValidation.error}`
             };
         }
 
-        // Exibe diagrama
+        // Display diagram
         this.displayDiagram(extensionUri, processedCode);
 
         return { success: true };

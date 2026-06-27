@@ -14,11 +14,11 @@ export interface ValidationResult {
 }
 
 /**
- * Valida a estrutura completa do diagrama:
- * 1. Todos os //@-> apontam para IDs existentes
- * 2. Todo sequence node (X.Y) tem pai imediato (X) declarado
- * 3. Todo entry node (Login1) tem grupo correspondente (Login)
- * 4. Hierarquia é consistente (ex: Login1.1.1 → Login1.1 → Login1 → Login)
+ * Validates the complete diagram structure:
+ * 1. All //@-> point to existing IDs
+ * 2. Every sequence node (X.Y) has an immediate parent (X) declared
+ * 3. Every entry node (Login1) has a corresponding group (Login)
+ * 4. Hierarchy is consistent (e.g. Login1.1.1 → Login1.1 → Login1 → Login)
  */
 export function validateDiagram(
     allNodes: NodeInfo[],
@@ -27,7 +27,7 @@ export function validateDiagram(
     const errors: ValidationError[] = [];
     const prefixLower = prefix.toLowerCase();
 
-    // Coleta TODOS os IDs declarados (não são arrows)
+    // Collects ALL declared IDs (not arrows)
     const declaredIds = new Map<string, NodeInfo>();
     for (const node of allNodes) {
         if (!node.isArrow) {
@@ -40,13 +40,13 @@ export function validateDiagram(
     // 1. Verifica se todos os //@-> apontam para IDs existentes
     for (const node of allNodes) {
         if (node.isArrow) {
-            // Pula conexões diretas (//@Source->Target) - não precisam ser declaradas
+            // Skip direct connections (//@Source->Target) - they don\t need to be declared
             if (node.id.includes('->')) continue;
             
             if (!declaredIdSet.has(node.id)) {
                 errors.push({
                     line: node.line,
-                    message: `//@->${node.id} aponta para "${node.id}" que não foi declarado. Crie //@${node.id} primeiro.`,
+                    message: `//@->${node.id} points to "${node.id}" which has not been declared. Create //@${node.id} first.`,
                     missingId: node.id
                 });
             }
@@ -55,7 +55,7 @@ export function validateDiagram(
 
     // 2. Valida hierarquia: para cada sequence node, verifica se o pai imediato existe
     for (const [id, nodeInfo] of declaredIds) {
-        // Só valida nós com pontos (sequence nodes)
+        // Only validates nodes with dots (sequence nodes)
         if (!id.includes('.')) continue;
 
         // Acha o pai imediato (ex: "Login1.1.1" → pai "Login1.1")
@@ -65,7 +65,7 @@ export function validateDiagram(
         if (!declaredIdSet.has(parentId)) {
             errors.push({
                 line: nodeInfo.line,
-                message: `"${id}" (linha ${nodeInfo.line + 1}) tem pai "${parentId}" que não foi declarado. Crie //@${parentId} antes.`,
+                message: `"${id}" (linha ${nodeInfo.line + 1}) has parent "${parentId}" which has not been declared. Create //@${parentId} first.`,
                 missingId: parentId
             });
         }
@@ -73,7 +73,7 @@ export function validateDiagram(
 
     // 3. Valida que todo entry node tem um grupo correspondente
     for (const [id, nodeInfo] of declaredIds) {
-        // Identifica entry node: prefixo + número inteiro (ex: "Login1", "Signup2")
+        // Identifies entry node: prefix + integer number (e.g. "Login1", "Signup2")
         const entryMatch = id.match(/^([a-zA-Z_]+)\d+$/);
         if (!entryMatch) continue;
 
@@ -81,7 +81,7 @@ export function validateDiagram(
         if (!declaredIdSet.has(groupId)) {
             errors.push({
                 line: nodeInfo.line,
-                message: `"${id}" (linha ${nodeInfo.line + 1}) pertence ao grupo "${groupId}", mas o grupo não foi declarado. Crie //@${groupId} antes.`,
+                message: `"${id}" (linha ${nodeInfo.line + 1}) belongs to group "${groupId}", but the group has not been declared. Create //@${groupId} first.`,
                 missingId: groupId
             });
         }
@@ -94,7 +94,7 @@ export function validateDiagram(
 }
 
 /**
- * Encontra o ID do pai de um item numerado
+ * Finds the parent ID of a numbered item
  */
 export function findParentId(id: string, groups: Array<{ id: string }>): string | null {
     const lastDotIndex = id.lastIndexOf('.');

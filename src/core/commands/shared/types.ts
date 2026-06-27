@@ -12,15 +12,15 @@ export interface DiagramResult {
 }
 
 /**
- * Interface que todo command de diagrama deve implementar.
- * Cada tipo de diagrama (flowchart, sequence, class, state, er)
- * tem sua própria implementação com validação Mermaid específica.
+ * Interface that every diagram command must implement.
+ * Each diagram type (flowchart, sequence, class, state, er)
+ * has its own implementation with specific Mermaid validation.
  */
 export interface DiagramCommandHandler {
-    /** Identificador único do tipo de diagrama */
+    /** Unique identifier for the diagram type */
     type: string;
-    /** Verifica se este handler atende ao diagramType informado */
+    /** Checks if this handler matches the given diagram type */
     matches(diagramType: string): boolean;
-    /** Executa o pipeline completo: validação, processamento e exibição */
+    /** Executes the complete pipeline: validation, processing and display */
     execute(context: DiagramCommandContext): DiagramResult;
 }

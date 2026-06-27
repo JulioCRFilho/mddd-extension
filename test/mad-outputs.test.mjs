@@ -1,7 +1,7 @@
 /**
- * Testes de output dos diagramas — usa node:test nativo (zero dependências).
+ * Diagram output tests — uses native node:test (zero dependencies).
  *
- * Compila o projeto com `npm run compile`, depois roda:
+ * Compiles the project with `npm run compile`, then runs:
  *   node --test test/mad-outputs.test.mjs
  */
 import { describe, it, before } from 'node:test';
@@ -14,11 +14,11 @@ import { createRequire } from 'node:module';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const require = createRequire(import.meta.url);
 
-// ── imports do core compilado ──────────────────────────────────────────
+// ── compiled core imports ──────────────────────────────────────────
 const { findRelatedTags } = require('../out/src/core/commands/shared/helpers');
 const { generateMermaidDiagram } = require('../out/src/core/diagram/generator');
 
-// ── mock de vscode.TextDocument ────────────────────────────────────────
+// ── vscode.TextDocument mock ────────────────────────────────────────
 function mockDocument(content) {
   return {
     getText: () => content,
@@ -66,17 +66,17 @@ describe('01 – Flowchart (01-flowchart-login.ts)', () => {
 
   before(() => { out = processExample('01-flowchart-login.ts'); });
 
-  it('começa com flowchart TD', () => {
+  it('starts with flowchart TD', () => {
     assert.ok(out.startsWith('graph LR\n') || out.startsWith('flowchart TD\n'));
   });
 
-  it('contém subgraphs Auth, Dashboard e Error', () => {
+  it('contains subgraphs Auth, Dashboard and Error', () => {
     assert.ok(out.includes('subgraph Auth'));
     assert.ok(out.includes('subgraph Dashboard'));
     assert.ok(out.includes('subgraph Error'));
   });
 
-  it('contém labels extraídos do código', () => {
+  it('contains labels extracted from code', () => {
     assert.ok(out.includes('Handle Login'));
     assert.ok(out.includes('Verify 2FA'));
     assert.ok(out.includes('Authenticate'));
@@ -85,16 +85,16 @@ describe('01 – Flowchart (01-flowchart-login.ts)', () => {
     assert.ok(out.includes('Show Dashboard'));
   });
 
-  it('contém arestas da hierarquia', () => {
+  it('contains hierarchy edges', () => {
     assert.ok(/N\d+ -->\|Authenticate\| N\d+/.test(out),
-      'aresta de Authenticate');
+      'A edge of Authenticate');
     assert.ok(/N\d+ -->\|Show dashboard\| N\d+/.test(out),
-      'aresta de Show dashboard');
+      'A edge of Show dashboard');
     assert.ok(/N\d+ -->\|Validate code\| N\d+/.test(out),
-      'aresta de Validate code');
+      'A edge of Validate code');
   });
 
-  it('snapshot completo', (t) => {
+  it('complete snapshot', (t) => {
     t.assert.snapshot(out);
   });
 });
@@ -107,21 +107,21 @@ describe('02 – Sequence (02-sequence-api.js)', () => {
 
   before(() => { out = processExample('02-sequence-api.js'); });
 
-  it('começa com sequenceDiagram', () => {
+  it('starts with sequenceDiagram', () => {
     assert.ok(out.startsWith('sequenceDiagram\n'));
   });
 
-  it('contém participantes Client, Server, Database, Error', () => {
+  it('contains participants Client, Server, Database, Error', () => {
     for (const p of ['Client', 'Server', 'Database', 'Error'])
       assert.ok(out.includes(`participant ${p}`), `participant ${p}`);
   });
 
-  it('contém ao menos 5 mensagens com ->>', () => {
+  it('contains at least 5 messages with ->>', () => {
     const msgs = out.split('\n').filter(l => l.includes('->>'));
-    assert.ok(msgs.length >= 5, `esperado >=5, obtido ${msgs.length}`);
+    assert.ok(msgs.length >= 5, `expected >=5, got ${msgs.length}`);
   });
 
-  it('snapshot completo', (t) => {
+  it('complete snapshot', (t) => {
     t.assert.snapshot(out);
   });
 });
@@ -134,26 +134,26 @@ describe('03 – Class (03-class-diagram-oop.py)', () => {
 
   before(() => { out = processExample('03-class-diagram-oop.py'); });
 
-  it('começa com classDiagram', () => {
+  it('starts with classDiagram', () => {
     assert.ok(out.startsWith('classDiagram\n'));
   });
 
-  it('contém classes User, Order e Product', () => {
+  it('contains classes User, Order and Product', () => {
     for (const c of ['class User', 'class Order', 'class Product'])
-      assert.ok(out.includes(c), `classe ${c}`);
+      assert.ok(out.includes(c), `class ${c}`);
   });
 
-  it('contém métodos Python', () => {
+  it('contains Python methods', () => {
     for (const m of ['+init()', '+Place Order()', '+Calculate Total()', '+Add Item()'])
-      assert.ok(out.includes(m), `método ${m}`);
+      assert.ok(out.includes(m), `method ${m}`);
   });
 
-  it('contém relacionamentos', () => {
+  it('contains relationships', () => {
     assert.ok(out.includes('User --> Order'), 'User --> Order');
     assert.ok(out.includes('Admin --> Product'), 'Admin --> Product');
   });
 
-  it('snapshot completo', (t) => {
+  it('complete snapshot', (t) => {
     t.assert.snapshot(out);
   });
 });
@@ -166,16 +166,16 @@ describe('04 – State (04-state-machine-login.js)', () => {
 
   before(() => { out = processExample('04-state-machine-login.js'); });
 
-  it('começa com stateDiagram-v2', () => {
+  it('starts with stateDiagram-v2', () => {
     assert.ok(out.startsWith('stateDiagram-v2\n'));
   });
 
-  it('contém estados LoggedOut, LoggingIn, TwoFactorAuth, LoggedIn, AccountLocked e SessionExpired', () => {
+  it('contains states LoggedOut, LoggingIn, TwoFactorAuth, LoggedIn, AccountLocked and SessionExpired', () => {
     for (const s of ['state LoggedOut', 'state LoggingIn', 'state TwoFactorAuth', 'state LoggedIn', 'state AccountLocked', 'state SessionExpired'])
-      assert.ok(out.includes(s), `estado ${s}`);
+      assert.ok(out.includes(s), `state ${s}`);
   });
 
-  it('contém ações dentro dos estados (usa description do @comment)', () => {
+  it('contains actions inside states (uses @comment description)', () => {
     const actions = [
       'Show login form',
       'Authenticate',
@@ -184,10 +184,10 @@ describe('04 – State (04-state-machine-login.js)', () => {
       'Show lock screen',
       'Redirect to login',
     ];
-    for (const a of actions) assert.ok(out.includes(a), `ação ${a}`);
+    for (const a of actions) assert.ok(out.includes(a), `action ${a}`);
   });
 
-  it('contém transições entre estados', () => {
+  it('contains transitions between states', () => {
     assert.ok(out.includes('LoggedOut --> LoggingIn'));
     assert.ok(out.includes('LoggingIn --> TwoFactorAuth'));
     assert.ok(out.includes('TwoFactorAuth --> LoggedIn'));
@@ -197,7 +197,7 @@ describe('04 – State (04-state-machine-login.js)', () => {
     assert.ok(out.includes('TwoFactorAuth --> AccountLocked'));
   });
 
-  it('snapshot completo', (t) => {
+  it('complete snapshot', (t) => {
     t.assert.snapshot(out);
   });
 });
@@ -210,28 +210,28 @@ describe('05 – ER (05-er-database.sql)', () => {
 
   before(() => { out = processExample('05-er-database.sql'); });
 
-  it('começa com erDiagram', () => {
+  it('starts with erDiagram', () => {
     assert.ok(out.startsWith('erDiagram\n'));
   });
 
-  it('contém entidades User, Order, Product e OrderItem', () => {
+  it('contains entities User, Order, Product and OrderItem', () => {
     for (const e of ['User {', 'Order {', 'Product {', 'OrderItem {'])
-      assert.ok(out.includes(e), `entidade ${e}`);
+      assert.ok(out.includes(e), `entity ${e}`);
   });
 
-  it('contém atributos SQL', () => {
+  it('contains SQL attributes', () => {
     const attrs = ['string id', 'string name', 'string email',
                    'string total', 'string stock', 'string quantity'];
-    for (const a of attrs) assert.ok(out.includes(a), `atributo ${a}`);
+    for (const a of attrs) assert.ok(out.includes(a), `attribute ${a}`);
   });
 
-  it('contém os 3 relacionamentos', () => {
+  it('contains all 3 relationships', () => {
     assert.ok(out.includes('User ||--o{ Order : places'));
     assert.ok(out.includes('Order ||--o{ OrderItem : contains'));
     assert.ok(out.includes('Product ||--o{ OrderItem : references'));
   });
 
-  it('snapshot completo', (t) => {
+  it('complete snapshot', (t) => {
     t.assert.snapshot(out);
   });
 });

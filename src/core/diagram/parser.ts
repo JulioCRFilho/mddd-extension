@@ -5,7 +5,7 @@ export interface NodeInfo {
     id: string;
     description: string | null;
     isArrow: boolean;
-    /** Tipo de seta para classDiagram: '-->' (assoc), '--' (dep), '<|--' (herança), '*--' (composição), 'o--' (agregação) */
+    /** Arrow type for classDiagram: '-->' (assoc), '--' (dep), '<|--' (inheritance), '*--' (composition), 'o--' (aggregation) */
     arrowPrefix?: string;
 }
 
@@ -18,10 +18,10 @@ export interface ProcessedNode {
 }
 
 /**
- * Lê o tipo de diagrama da primeira linha do arquivo.
- * Formato esperado: //@::DiagramType
- * Exemplo: //@::flowchart TD
- * Retorna "flowchart TD" como fallback se não encontrar.
+ * Reads the diagram type from the first line of the file.
+ * Expected format: //@::DiagramType
+ * Example: //@::flowchart TD
+ * Returns "flowchart TD" as fallback if not found.
  */
 export function readDiagramType(document: vscode.TextDocument): string {
     const text = document.getText();
@@ -31,7 +31,7 @@ export function readDiagramType(document: vscode.TextDocument): string {
 }
 
 /**
- * Filtra todos os nós //@ do documento
+ * Filters all //@ nodes from the document
  */
 export function filterAllNodes(document: vscode.TextDocument): NodeInfo[] {
     const allNodes: NodeInfo[] = [];
@@ -54,7 +54,7 @@ export function filterAllNodes(document: vscode.TextDocument): NodeInfo[] {
             continue;
         }
 
-        // Verifica //@->Target:comentário (forward pointer explícito)
+        // Checks //@->Target:comment (explicit forward pointer)
         // Ex: //@->Server:HTTP Request
         const arrowExplicitMatch = line.match(/\/\/@->([\w.]+)(?::([^\n]+))?/);
         if (arrowExplicitMatch) {
@@ -68,7 +68,7 @@ export function filterAllNodes(document: vscode.TextDocument): NodeInfo[] {
             continue;
         }
 
-        // Verifica //@Source->Target:comentário (forward pointer inline)
+        // Checks //@Source->Target:comment (inline forward pointer)
         // Ex: //@Client->Server:HTTP Request
         const arrowInlineMatch = line.match(/\/\/@([\w.]+)->([\w.]+)(?::([^\n]+))?/);
         if (arrowInlineMatch) {
@@ -81,7 +81,7 @@ export function filterAllNodes(document: vscode.TextDocument): NodeInfo[] {
             continue;
         }
 
-        // Verifica //@ID:comentário (retro pointer)
+        // Checks //@ID:comment (retro pointer)
         const tagMatch = line.match(/\/\/@([\w.]+)(?::([^\n]+))?/);
         if (tagMatch) {
             allNodes.push({
@@ -97,7 +97,7 @@ export function filterAllNodes(document: vscode.TextDocument): NodeInfo[] {
 }
 
 /**
- * Separa nós em retro pointers //@ e forward pointers //@->
+ * Splits nodes into retro pointers //@ and forward pointers //@->
  */
 export function splitNodes(
     allNodes: NodeInfo[]
@@ -129,7 +129,7 @@ export function splitNodes(
 }
 
 /**
- * Filtra grupos (IDs sem números)
+ * Filters groups (IDs without numbers)
  */
 export function filterGroups(
     nodes: ProcessedNode[]
@@ -138,7 +138,7 @@ export function filterGroups(
 }
 
 /**
- * Filtra nós de entrada (prefix+ número simples)
+ * Filters entry nodes (prefix+ simple number)
  */
 export function filterPrefix(
     nodes: ProcessedNode[]
@@ -147,7 +147,7 @@ export function filterPrefix(
 }
 
 /**
- * Filtra nós de sequência (prefix+ número.número...)
+ * Filters sequence nodes (prefix+ number.number...)
  */
 export function filterSequences(
     nodes: ProcessedNode[]

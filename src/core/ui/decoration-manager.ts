@@ -1,10 +1,10 @@
 import * as vscode from 'vscode';
 
 /**
- * Gerenciador de decorações com ícone de polvo na margem
+ * Decoration manager with gutter icon
  */
 
-// Regex para detectar linhas com //@ (qualquer linha que comece com //@)
+// Regex to detect lines with //@ (any line starting with //@)
 export class MADDecorationManager {
     private decorationType: vscode.TextEditorDecorationType;
 
@@ -12,7 +12,7 @@ export class MADDecorationManager {
         this.decorationType = vscode.window.createTextEditorDecorationType({
             gutterIconPath: vscode.Uri.file(iconPath),
             gutterIconSize: 'contain',
-            isWholeLine: false  // Apenas a gutter, não a linha inteira
+            isWholeLine: false  // Gutter only, not the entire line
         });
     }
 

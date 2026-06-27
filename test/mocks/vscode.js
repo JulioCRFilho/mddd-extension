@@ -1,5 +1,5 @@
-// Mock do módulo vscode para testes Node puro.
-// Carregado via NODE_PATH=test/mocks
+// Mock for the vscode module for pure Node tests.
+// Loaded via NODE_PATH=test/mocks
 'use strict';
 
 class Uri {

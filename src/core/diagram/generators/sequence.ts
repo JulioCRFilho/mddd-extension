@@ -12,7 +12,7 @@ export const sequenceGenerator: DiagramGenerator = {
         const participants: string[] = [];
         const messages: Array<{ from: string; to: string; label: string }> = [];
 
-        // Primeira passada: coleta todos os participantes (grupos)
+        // First pass: collect all participants (groups)
         for (const tag of tags) {
             if (!/\d/.test(tag.id) && !tag.id.includes('->')) {
                 if (!participantSet.has(tag.id)) {
@@ -22,10 +22,10 @@ export const sequenceGenerator: DiagramGenerator = {
             }
         }
 
-        // Segunda passada: processa tags na ordem do arquivo
+        // Second pass: process tags in file order
         const sortedByLine = [...tags].sort((a, b) => a.line - b.line);
         for (const tag of sortedByLine) {
-            // Processa conexões diretas: //@Source->Target:label
+            // Process direct connections: //@Source->Target:label
             if (tag.id.includes('->')) {
                 const [source, target] = tag.id.split('->');
                 if (source && target) {
@@ -60,7 +60,7 @@ export const sequenceGenerator: DiagramGenerator = {
             }
         }
 
-        // NÃO ordena! As mensagens já estão na ordem correta
+        // Do NOT sort! Messages are already in the correct order
         // pois foram adicionadas na ordem das tags no arquivo
 
         for (const p of participants) mermaid += `    participant ${p}\n`;

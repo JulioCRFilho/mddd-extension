@@ -1,8 +1,8 @@
 import { BaseDiagramCommand } from './shared/base-command';
 
 /**
- * Command handler para diagramas do tipo State Diagram.
- * Suporta: stateDiagram, stateDiagram-v2
+ * Command handler for State Diagram type.
+ * Supports: stateDiagram, stateDiagram-v2
  */
 export class StateCommand extends BaseDiagramCommand {
     readonly type = 'state';

@@ -66,7 +66,7 @@ export const flowchartGenerator: DiagramGenerator = {
                 mermaid += `        ${nodeId}["${safeLabel}"]\n`;
             }
 
-            // Mapeia o grupo para o primeiro nó do grupo (para conexões //@->Group)
+            // Maps the group to the first node in the group (for //@->Group connections)
             const firstNode = groupEntryNodes[0] || groupSequenceNodes[0];
             if (firstNode) {
                 idToNodeId.set(group.id, idToNodeId.get(firstNode.id)!);

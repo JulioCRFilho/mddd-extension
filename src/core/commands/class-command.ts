@@ -1,8 +1,8 @@
 import { BaseDiagramCommand } from './shared/base-command';
 
 /**
- * Command handler para diagramas do tipo Class Diagram.
- * Suporta: classDiagram
+ * Command handler for Class Diagram type.
+ * Supports: classDiagram
  */
 export class ClassCommand extends BaseDiagramCommand {
     readonly type = 'class';

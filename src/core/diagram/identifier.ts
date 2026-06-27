@@ -1,5 +1,5 @@
 /**
- * Lista de prefixos de código a serem removidos antes da formatação do label
+ * List of code prefixes to be removed before label formatting
  */
 const PREFIXES_TO_REMOVE = [
     'void', 'class', 'fun', 'def', 'function', 'const', 'val', 'var', 'let',
@@ -10,8 +10,8 @@ const PREFIXES_TO_REMOVE = [
 ];
 
 /**
- * Limpa o código bruto, removendo comentários inline, prefixos e sufixos,
- * e retorna um label legível formatado.
+ * Cleans the raw code, removing inline comments, prefixes and suffixes,
+ * and returns a readable formatted label.
  *
  * Exemplo:
  *   "void clickLoginButton();"  → "Click Login Button"
@@ -20,19 +20,19 @@ const PREFIXES_TO_REMOVE = [
  *   "val usuario = getUser();"  → "Get User"
  */
 export function formatCodeToLabel(code: string): string {
-    // 0. Remove quebras de linha e normaliza espaços
+    // 0. Remove line breaks and normalize spaces
     let cleaned = code.replace(/[\n\r]+/g, ' ').replace(/\s+/g, ' ').trim();
     
-    // 1. Remove comentários inline (// ou #)
+    // 1. Remove inline comments (// or #)
     cleaned = cleaned.replace(/\/\/.*$/, '').replace(/#.*$/, '').replace(/--.*$/, '');
 
-    // 2. Remove atribuições (= ...) pois queremos só o nome do símbolo
+    // 2. Remove assignments (= ...) since we only want the symbol name
     cleaned = cleaned.replace(/\s*=.*$/, '');
 
-    // 3. Remove sufixos comuns: ();, (), {};, ;
+    // 3. Remove common suffixes: ();, (), {};, ;
     cleaned = cleaned.replace(/\(\);?$/, '').replace(/\(\)$/, '').replace(/\{\};?$/, '').replace(/;$/, '');
 
-    // 4. Remove prefixos conhecidos (iterativamente, para casos como "public void")
+    // 4. Remove known prefixes (iteratively, for cases like "public void")
     let previous = '';
     while (previous !== cleaned) {
         previous = cleaned;
@@ -43,44 +43,44 @@ export function formatCodeToLabel(code: string): string {
         cleaned = cleaned.trim();
     }
 
-    // 5. Remove qualquer caractere que não seja palavra, número ou _
+    // 5. Remove any non-word, non-number, non-underscore character
     cleaned = cleaned.replace(/[^a-zA-Z0-9_\s]/g, '');
     
-    // 6. Split por espaço para gerar lista de palavras
+    // 6. Split by space to generate list of words
     const words = cleaned.split(/\s+/).filter(w => w.length > 0);
     
-    // 7. Procura a primeira palavra que combina com camelCase, PascalCase ou snake_case
+    // 7. Look for the first word matching camelCase, PascalCase or snake_case
     for (const word of words) {
-        // camelCase: começa com minúscula, tem pelo menos uma maiúscula
+        // camelCase: starts with lowercase, has at least one uppercase
         const camelCaseMatch = word.match(/^[a-z][a-z0-9]*[A-Z][a-zA-Z0-9]*$/);
-        // PascalCase: começa com maiúscula, tem pelo menos uma minúscula
+        // PascalCase: starts with uppercase, has at least one lowercase
         const pascalCaseMatch = word.match(/^[A-Z][a-z]+[A-Za-z0-9]*$/);
-        // snake_case: tem underscores
+        // snake_case: has underscores
         const snakeCaseMatch = word.match(/^[a-zA-Z][a-zA-Z0-9_]*$/);
         
         if (camelCaseMatch || pascalCaseMatch || snakeCaseMatch) {
-            // Encontrou a palavra! Agora quebra em mais palavras baseado no padrão
+            // Found the word! Now break into more words based on the pattern
             let label = word;
             
             if (camelCaseMatch) {
-                // camelCase: quebra nas transições minúscula→maiúscula
+                // camelCase: break at lowercase→uppercase transitions
                 label = label.replace(/([a-z])([A-Z])/g, '$1 $2');
             } else if (pascalCaseMatch) {
-                // PascalCase: quebra nas transições maiúscula→minúscula
+                // PascalCase: break at uppercase→lowercase transitions
                 label = label.replace(/([A-Z])([a-z])/g, '$1 $2');
             } else if (snakeCaseMatch) {
-                // snake_case: substitui underscores por espaços
+                // snake_case: replace underscores with spaces
                 label = label.replace(/_/g, ' ');
             }
             
-            // Capitaliza cada palavra
+            // Capitalizes each word
             label = label.replace(/\b\w/g, (char) => char.toUpperCase());
             
             return label.trim();
         }
     }
     
-    // 8. Fallback: retorna a primeira palavra se não encontrou padrão
+    // 8. Fallback: return the first word if no pattern was found
     if (words.length > 0) {
         return words[0].replace(/_/g, '');
     }
@@ -89,25 +89,25 @@ export function formatCodeToLabel(code: string): string {
 }
 
 /**
- * Extrai o identificador bruto da linha de código (primeira palavra após limpeza de prefixos/sufixos),
- * sem formatar para label. Retorna null se não encontrar nada.
+ * Extracts the raw identifier from the code line (first word after cleaning prefixes/suffixes),
+ * without formatting to label. Returns null if nothing is found.
  *
  * Exemplo: "void clickLoginButton();" → "clickLoginButton"
  */
 export function extractIdentifierBelow(lineText: string): string | null {
-    // 0. Remove quebras de linha primeiro
+    // 0. Remove line breaks first
     let cleaned = lineText.replace(/[\n\r]+/g, ' ').replace(/\s+/g, ' ').trim();
     
-    // 1. Remove comentários inline
+    // 1. Remove inline comments
     cleaned = cleaned.replace(/\/\/.*$/, '').replace(/#.*$/, '').replace(/--.*$/, '');
 
-    // 2. Remove atribuições (= ...)
+    // 2. Remove assignments (= ...)
     cleaned = cleaned.replace(/\s*=.*$/, '');
 
-    // 3. Remove sufixos comuns
+    // 3. Remove common suffixes
     cleaned = cleaned.replace(/\(\);?$/, '').replace(/\(\)$/, '').replace(/\{\};?$/, '').replace(/;$/, '');
 
-    // 4. Remove prefixos conhecidos iterativamente
+    // 4. Remove known prefixes iteratively
     const PREFIXES = ['void', 'class', 'fun', 'def', 'function', 'const', 'val', 'var', 'let',
         'interface', 'type', 'enum', 'struct', 'public', 'private', 'protected',
         'static', 'async', 'await', 'override', 'abstract', 'final',
@@ -124,7 +124,7 @@ export function extractIdentifierBelow(lineText: string): string | null {
         cleaned = cleaned.trim();
     }
 
-    // 5. Extrai o primeiro identificador (palavra)
+    // 5. Extract the first identifier (word)
     const match = cleaned.match(/^[a-zA-Z_][a-zA-Z0-9_]*/);
     if (!match) return null;
 
@@ -132,7 +132,7 @@ export function extractIdentifierBelow(lineText: string): string | null {
 }
 
 /**
- * Mantido para compatibilidade — delega a formatCodeToLabel.
+ * Maintained for compatibility — delegates to formatCodeToLabel.
  */
 export function toReadableLabel(name: string): string {
     return formatCodeToLabel(name);

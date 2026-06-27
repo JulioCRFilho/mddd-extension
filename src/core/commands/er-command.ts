@@ -1,15 +1,15 @@
 import { BaseDiagramCommand } from './shared/base-command';
 
 /**
- * Command handler para diagramas do tipo ER (Entity Relationship).
- * Suporta: erDiagram
+ * Command handler for ER (Entity Relationship) diagrams.
+ * Supports: erDiagram
  *
- * Comportamento específico:
- * - Extrai blocos SQL completos para definir entidades
- * - Usa SQL DDL abaixo dos grupos como definição de entidades
+ * Specific behavior:
+ * - Extracts complete SQL blocks to define entities
+ * - Uses SQL DDL below groups as entity definitions
  *
- * O processamento específico de ER (extração de SQL) é feito
- * no helper `processRetroPointers` com isERDiagram=true
+ * The ER-specific processing (SQL extraction) is performed
+ * in the `processRetroPointers` helper with isERDiagram=true
  */
 export class ERCommand extends BaseDiagramCommand {
     readonly type = 'er';

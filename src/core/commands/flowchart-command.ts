@@ -1,8 +1,8 @@
 import { BaseDiagramCommand } from './shared/base-command';
 
 /**
- * Command handler para diagramas do tipo Flowchart / Graph.
- * Suporta: flowchart TD, flowchart LR, graph TD, graph LR, etc.
+ * Command handler for Flowchart / Graph diagrams.
+ * Supports: flowchart TD, flowchart LR, graph TD, graph LR, etc.
  */
 export class FlowchartCommand extends BaseDiagramCommand {
     readonly type = 'flowchart';

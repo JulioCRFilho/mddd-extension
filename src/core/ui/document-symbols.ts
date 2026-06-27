@@ -2,8 +2,8 @@ import * as vscode from 'vscode';
 import { filterAllNodes, NodeInfo } from '../diagram/parser';
 
 /**
- * DocumentSymbolProvider que indexa as tags //@ e as exibe no outline do VS Code.
- * Organiza em árvore: Grupos → Entry Nodes → Sequence Nodes
+ * DocumentSymbolProvider that indexes //@ tags and displays them in the VS Code outline.
+ * Organizes in a tree: Groups → Entry Nodes → Sequence Nodes
  */
 export class MADDocumentSymbolProvider implements vscode.DocumentSymbolProvider {
     provideDocumentSymbols(
@@ -11,18 +11,18 @@ export class MADDocumentSymbolProvider implements vscode.DocumentSymbolProvider 
     ): vscode.ProviderResult<vscode.SymbolInformation[] | vscode.DocumentSymbol[]> {
         const allNodes = filterAllNodes(document);
 
-        // Apenas nós declarados (não arrows)
+        // Only declared nodes (not arrows)
         const declaredNodes = allNodes.filter(n => !n.isArrow);
 
-        // Organiza em árvore
+        // Organizes in a tree
         const result: vscode.DocumentSymbol[] = [];
 
-        // 1. Grupos
+        // 1. Groups
         const groups = declaredNodes.filter(n => !/\d/.test(n.id));
         for (const group of groups) {
             const groupSymbol = new vscode.DocumentSymbol(
                 group.id,
-                group.description || 'Grupo',
+                group.description || 'Group',
                 vscode.SymbolKind.Namespace,
                 new vscode.Range(group.line, 0, group.line, 100),
                 new vscode.Range(group.line, 0, group.line, 100)
@@ -70,9 +70,9 @@ export class MADDocumentSymbolProvider implements vscode.DocumentSymbolProvider 
             result.push(groupSymbol);
         }
 
-        // 4. Nós órfãos (não pertencem a nenhum grupo)
+        // 4. Orphan nodes (do not belong to any group)
         const orphanNodes = declaredNodes.filter(n => {
-            if (!/\d/.test(n.id)) return false; // não é numerado
+            if (!/\d/.test(n.id)) return false; // not numbered
             const match = n.id.match(/^([a-zA-Z_]+)\d+$/);
             if (!match) return false;
             return !groups.some(g => g.id.toLowerCase() === match[1].toLowerCase());
@@ -81,7 +81,7 @@ export class MADDocumentSymbolProvider implements vscode.DocumentSymbolProvider 
         if (orphanNodes.length > 0) {
             const orphanSymbol = new vscode.DocumentSymbol(
                 'Orphans',
-                `${orphanNodes.length} nós não agrupados`,
+                `${orphanNodes.length} ungrouped nodes`,
                 vscode.SymbolKind.File,
                 new vscode.Range(0, 0, 0, 0),
                 new vscode.Range(0, 0, 0, 0)
@@ -98,12 +98,12 @@ export class MADDocumentSymbolProvider implements vscode.DocumentSymbolProvider 
             result.push(orphanSymbol);
         }
 
-        // 5. Forward pointers (para referência)
+        // 5. Forward pointers (for reference)
         const forwardNodes = allNodes.filter(n => n.isArrow);
         if (forwardNodes.length > 0) {
             const forwardSymbol = new vscode.DocumentSymbol(
                 'Forward Pointers',
-                `${forwardNodes.length} referências externas`,
+                `${forwardNodes.length} external references`,
                 vscode.SymbolKind.Variable,
                 new vscode.Range(0, 0, 0, 0),
                 new vscode.Range(0, 0, 0, 0)

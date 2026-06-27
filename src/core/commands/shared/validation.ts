@@ -12,7 +12,7 @@ export function validateMADStructure(document: import('vscode').TextDocument, pr
 }
 
 /**
- * Validação básica de sintaxe Mermaid para Flowchart/Graph
+ * Basic Mermaid syntax validation for Flowchart/Graph
  */
 function validateFlowchartSyntax(lines: string[]): { valid: boolean; error?: string } {
     const hasNodes = lines.some(l => /^[A-Za-z0-9_]+\[/.test(l.trim()));
@@ -21,7 +21,7 @@ function validateFlowchartSyntax(lines: string[]): { valid: boolean; error?: str
     if (!hasNodes && !hasConnections) {
         return {
             valid: false,
-            error: 'Nenhum nó ou conexão encontrada. Verifique se as tags estão corretas.'
+            error: 'No nodes or connections found. Check if the tags are correct.'
         };
     }
 
@@ -31,7 +31,7 @@ function validateFlowchartSyntax(lines: string[]): { valid: boolean; error?: str
         const match = line.match(idRegex);
         if (match) {
             const id = match[1];
-            if (ids.has(id)) return { valid: false, error: `ID duplicado: "${id}".` };
+            if (ids.has(id)) return { valid: false, error: `Duplicate ID: "${id}".` };
             ids.add(id);
         }
     }
@@ -40,7 +40,7 @@ function validateFlowchartSyntax(lines: string[]): { valid: boolean; error?: str
 }
 
 /**
- * Validação de sintaxe Mermaid para Sequence Diagram
+ * Mermaid syntax validation for Sequence Diagram
  */
 function validateSequenceSyntax(lines: string[]): { valid: boolean; error?: string } {
     const hasParticipants = lines.some(l => l.trim().startsWith('participant'));
@@ -48,28 +48,28 @@ function validateSequenceSyntax(lines: string[]): { valid: boolean; error?: stri
     if (!hasParticipants && !hasMessages) {
         return {
             valid: false,
-            error: 'Nenhum participante ou mensagem encontrada. Verifique as tags.'
+            error: 'No participants or messages found. Check the tags.'
         };
     }
     return { valid: true };
 }
 
 /**
- * Validação de sintaxe Mermaid para Class Diagram
+ * Mermaid syntax validation for Class Diagram
  */
 function validateClassSyntax(lines: string[]): { valid: boolean; error?: string } {
     const hasClasses = lines.some(l => l.trim().startsWith('class'));
     if (!hasClasses) {
         return {
             valid: false,
-            error: 'Nenhuma classe encontrada. Verifique as tags.'
+            error: 'No classes found. Check the tags.'
         };
     }
     return { valid: true };
 }
 
 /**
- * Validação de sintaxe Mermaid para State Diagram
+ * Mermaid syntax validation for State Diagram
  */
 function validateStateSyntax(lines: string[]): { valid: boolean; error?: string } {
     const hasStates = lines.some(l => l.trim().startsWith('state'));
@@ -77,28 +77,28 @@ function validateStateSyntax(lines: string[]): { valid: boolean; error?: string 
     if (!hasStates && !hasTransitions) {
         return {
             valid: false,
-            error: 'Nenhum estado ou transição encontrada. Verifique as tags.'
+            error: 'No states or transitions found. Check the tags.'
         };
     }
     return { valid: true };
 }
 
 /**
- * Validação de sintaxe Mermaid para ER Diagram
+ * Mermaid syntax validation for ER Diagram
  */
 function validateERSyntax(lines: string[]): { valid: boolean; error?: string } {
     const hasEntities = lines.some(l => /\w+\s*\{/.test(l));
     if (!hasEntities) {
         return {
             valid: false,
-            error: 'Nenhuma entidade encontrada. Verifique as tags.'
+            error: 'No entities found. Check the tags.'
         };
     }
     return { valid: true };
 }
 
 /**
- * Valida a sintaxe Mermaid baseada no tipo de diagrama
+ * Validates the Mermaid syntax based on the diagram type
  */
 export function validateMermaidForType(mermaidCode: string, diagramType: string): { valid: boolean; error?: string } {
     const lines = mermaidCode.split('\n').filter(l => l.trim() && !l.trim().startsWith('subgraph'));
@@ -120,6 +120,6 @@ export function validateMermaidForType(mermaidCode: string, diagramType: string)
         return validateERSyntax(lines);
     }
 
-    // Para outros tipos, validação branda
+    // For other types, lenient validation
     return { valid: true };
 }

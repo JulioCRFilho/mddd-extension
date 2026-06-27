@@ -14,21 +14,21 @@ export const stateGenerator: DiagramGenerator = {
         const addedEdges = new Set<string>();
 
         for (const tag of tags) {
-            // Ignora conexões diretas (//@Source->Target) - serão processadas depois
+            // Ignore direct connections (//@Source->Target) - they will be processed later
             if (tag.id.includes('->')) continue;
 
-            // Estados principais (sem números)
+            // Main states (without numbers)
             if (!/\d/.test(tag.id)) {
                 if (!states.has(tag.id)) states.set(tag.id, []);
                 continue;
             }
 
-            // Ações de um estado (LoggedOut1, LoggedOut1.1, etc)
+            // Actions of a state (LoggedOut1, LoggedOut1.1, etc)
             const groupMatch = tag.id.match(/^([a-zA-Z_]+)\d+/);
             if (groupMatch) {
                 const groupId = groupMatch[1];
                 if (states.has(groupId)) {
-                    // Formata o label da ação: "Display login form" → "DisplayLoginForm"
+                    // Format the action label: "Display login form" → "DisplayLoginForm"
                     const actionId = tag.label.replace(/\s+/g, '');
                     const displayLabel = tag.description || tag.label;
                     states.get(groupId)!.push(`${actionId}: ${displayLabel}`);
@@ -36,8 +36,8 @@ export const stateGenerator: DiagramGenerator = {
             }
         }
 
-        // Processa conexões de tag.connections (vindas do pipeline de diagram-command)
-        // Inclui tanto conexões de tags normais quanto conexões diretas (//@Source->Target)
+        // Process tag.connections (coming from the diagram-command pipeline)
+        // Includes both normal tag connections and direct connections (//@Source->Target)
         for (const tag of tags) {
             if (!/\d/.test(tag.id) && tag.connections && tag.connections.length > 0) {
                 for (const conn of tag.connections) {
@@ -50,7 +50,7 @@ export const stateGenerator: DiagramGenerator = {
             }
         }
 
-        // Gera os states (sem aspas!)
+        // Generate states (no quotes!)
         for (const stateId of states.keys()) {
             mermaid += `    state ${stateId} {\n`;
             const actions = states.get(stateId) || [];
@@ -60,7 +60,7 @@ export const stateGenerator: DiagramGenerator = {
             mermaid += '    }\n';
         }
 
-        // Adiciona transições
+        // Add transitions
         for (const trans of transitions) mermaid += trans + '\n';
 
         return mermaid;
