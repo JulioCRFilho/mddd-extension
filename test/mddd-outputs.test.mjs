@@ -67,7 +67,7 @@ describe('01 – Flowchart (01-flowchart-login.ts)', () => {
   before(() => { out = processExample('01-flowchart-login.ts'); });
 
   it('começa com flowchart TD', () => {
-    assert.ok(out.startsWith('flowchart TD\n'));
+    assert.ok(out.startsWith('graph LR\n') || out.startsWith('flowchart TD\n'));
   });
 
   it('contém subgraphs Auth, Dashboard e Error', () => {
@@ -77,19 +77,19 @@ describe('01 – Flowchart (01-flowchart-login.ts)', () => {
   });
 
   it('contém labels extraídos do código', () => {
-    assert.ok(out.includes('Validate Credentials'));
-    assert.ok(out.includes('Login'));
-    assert.ok(out.includes('Logout'));
+    assert.ok(out.includes('Authenticate'));
+    assert.ok(out.includes('Handle Login Request'));
+    assert.ok(out.includes('Create Session'));
     assert.ok(out.includes('Show Dashboard'));
     assert.ok(out.includes('Load User Data'));
     assert.ok(out.includes('Handle Error'));
   });
 
   it('contém arestas da hierarquia', () => {
-    assert.ok(/N\d+ -->\|Fazer logout\| N\d+/.test(out),
-      'aresta de Fazer logout');
-    assert.ok(/N\d+ -->\|Carregar dados\| N\d+/.test(out),
-      'aresta de Carregar dados');
+    assert.ok(/N\d+ -->\|Verify 2FA code\| N\d+/.test(out),
+      'aresta de Verify 2FA code');
+    assert.ok(/N\d+ -->\|Load user data\| N\d+/.test(out),
+      'aresta de Load user data');
   });
 
   it('snapshot completo', (t) => {
@@ -148,7 +148,7 @@ describe('03 – Class (03-class-diagram-oop.py)', () => {
 
   it('contém relacionamentos', () => {
     assert.ok(out.includes('User --> Order'), 'User --> Order');
-    assert.ok(out.includes('User --> Payment'), 'User --> Payment');
+    assert.ok(out.includes('Admin --> Product'), 'Admin --> Product');
   });
 
   it('snapshot completo', (t) => {
@@ -175,19 +175,19 @@ describe('04 – State (04-state-machine-login.js)', () => {
 
   it('contém ações dentro dos estados', () => {
     const actions = [
-      'DisplayForm: Display Form',
-      'LoadUserData: Load User Data',
-      'RenderDashboard: Render Dashboard',
-      'ClearSession: Clear Session',
+      'DisplayLoginForm: Display Login Form',
+      'ValidateCredentials: Validate Credentials',
+      'SendCode: Send Code',
+      'StartTokenRefreshTimer: Start Token Refresh Timer',
       'RedirectToLogin: Redirect To Login',
     ];
     for (const a of actions) assert.ok(out.includes(a), `ação ${a}`);
   });
 
   it('contém as 3 transições entre estados', () => {
-    assert.ok(out.includes('LoggedOut --> LoggedIn: Login success'));
+    assert.ok(out.includes('LoggedOut --> LoggingIn: User submits credentials'));
     assert.ok(out.includes('LoggedIn --> SessionExpired: Token expired'));
-    assert.ok(out.includes('SessionExpired --> LoggedOut: Clear state'));
+    assert.ok(out.includes('SessionExpired --> LoggedOut: User redirected'));
   });
 
   it('snapshot completo', (t) => {

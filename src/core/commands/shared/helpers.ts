@@ -53,16 +53,29 @@ export function findRetroNodeForLine(
     document: vscode.TextDocument,
     forwardLine: number
 ): { id: string; line: number } | null {
+    // Estratégia 1: mesma linha de código exata
     const codeLine = extractCodeLine(document, forwardLine);
-    if (!codeLine) return null;
-
-    for (const retro of retroNodes) {
-        const retroCodeLine = extractCodeLine(document, retro.line);
-        if (retroCodeLine === codeLine) {
-            return { id: retro.id, line: retro.line };
+    if (codeLine) {
+        for (const retro of retroNodes) {
+            const retroCodeLine = extractCodeLine(document, retro.line);
+            if (retroCodeLine === codeLine) {
+                return { id: retro.id, line: retro.line };
+            }
         }
     }
-    return null;
+
+    // Estratégia 2: busca o retro node mais próximo acima
+    // (para //@-> dentro de métodos, associa ao método pai)
+    let closest: { id: string; line: number } | null = null;
+    for (const retro of retroNodes) {
+        if (retro.line < forwardLine && (!closest || retro.line > closest.line)) {
+            // Apenas retro nodes numerados (entradas) — não sub-passos ou grupos
+            if (/^[a-zA-Z_]+\d+$/.test(retro.id)) {
+                closest = { id: retro.id, line: retro.line };
+            }
+        }
+    }
+    return closest;
 }
 
 /**
@@ -73,8 +86,14 @@ export function processRetroPointers(
     document: vscode.TextDocument,
     retroPointers: Array<{ line: number; id: string; description: string | null }>,
     prefix: string,
-    isERDiagram: boolean = false
+    isERDiagramOrType: boolean | string = false
 ): Array<{ line: number; id: string; label: string; description: string | null; connections: Array<{ id: string; label: string }> }> {
+    const isERDiagram = typeof isERDiagramOrType === 'string'
+        ? isERDiagramOrType.toLowerCase().startsWith('erdiagram')
+        : isERDiagramOrType;
+    const isFlowchart = typeof isERDiagramOrType === 'string'
+        ? isERDiagramOrType.toLowerCase().startsWith('flowchart') || isERDiagramOrType.toLowerCase().startsWith('graph')
+        : false;
     const result: Array<{ line: number; id: string; label: string; description: string | null; connections: Array<{ id: string; label: string }> }> = [];
 
     for (const node of retroPointers) {
@@ -87,7 +106,18 @@ export function processRetroPointers(
         } else {
             const codeLine = extractCodeLine(document, node.line);
             const identifier = codeLine ? extractIdentifierBelow(codeLine) : null;
-            label = isGroup ? node.id : (identifier ? formatCodeToLabel(identifier) : node.id);
+            const fromCode = identifier ? formatCodeToLabel(identifier) : null;
+            // Para entradas principais (sem ponto): usa identificador do código
+            // Para sub-passos (com ponto .): prefere descrição explícita da anotação
+            const isEntry = /^[a-zA-Z_]+\d+$/.test(node.id);
+            const hasDots = /\.\d/.test(node.id);
+            if (isGroup) {
+                label = node.id;
+            } else if (isFlowchart && hasDots && node.description) {
+                label = node.description;
+            } else {
+                label = fromCode || node.description || node.id;
+            }
         }
 
         result.push({
@@ -298,10 +328,8 @@ export function findRelatedTagsWithOrder(
     const allNodes = filterAllNodes(document);
     const { retroPointers, forwardPointers } = splitNodes(allNodes);
 
-    const isERDiagram = diagramType.toLowerCase().startsWith('erdiagram');
-
     // Processa TODOS os retro pointers (sem filtro de prefixo)
-    const processedRetro = processRetroPointers(document, retroPointers, prefix, isERDiagram);
+    const processedRetro = processRetroPointers(document, retroPointers, prefix, diagramType);
     const { syntheticNodes, extraConnections, orderedDirectConnections } = processForwardPointers(document, forwardPointers, processedRetro, prefix);
 
     return {
