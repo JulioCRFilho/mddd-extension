@@ -44,5 +44,14 @@
     "type": "git",
     "url": "https://github.com/JulioCRFilho/mddd-extension.git"
   },
-  "icon": "assets/icon.png"
+  "icon": "assets/icon.png",
+  "publisher": "TheTod",
+  "license": "MIT",
+  "keywords": [
+    "mermaid",
+    "diagram",
+    "documentation",
+    "autodoc",
+    "mddd"
+  ]
 }
