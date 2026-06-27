@@ -170,26 +170,31 @@ describe('04 – State (04-state-machine-login.js)', () => {
     assert.ok(out.startsWith('stateDiagram-v2\n'));
   });
 
-  it('contém estados LoggedOut, LoggedIn, SessionExpired', () => {
-    for (const s of ['state LoggedOut', 'state LoggedIn', 'state SessionExpired'])
+  it('contém estados LoggedOut, LoggingIn, TwoFactorAuth, LoggedIn, AccountLocked e SessionExpired', () => {
+    for (const s of ['state LoggedOut', 'state LoggingIn', 'state TwoFactorAuth', 'state LoggedIn', 'state AccountLocked', 'state SessionExpired'])
       assert.ok(out.includes(s), `estado ${s}`);
   });
 
   it('contém ações dentro dos estados (usa description do @comment)', () => {
     const actions = [
-      'DisplayLoginForm: Exibir formulario de login',
-      'ValidateCredentials: Validar credenciais',
-      'SendCode: Enviar codigo',
-      'StartTokenRefreshTimer: Iniciar refresh automatico do token',
-      'RedirectToLogin: Redirecionar para login',
+      'Show login form',
+      'Authenticate',
+      'Verify code',
+      'Show dashboard',
+      'Show lock screen',
+      'Redirect to login',
     ];
     for (const a of actions) assert.ok(out.includes(a), `ação ${a}`);
   });
 
-  it('contém as 3 transições entre estados', () => {
-    assert.ok(out.includes('LoggedOut --> LoggingIn: User submits credentials'));
-    assert.ok(out.includes('LoggedIn --> SessionExpired: Token expired'));
-    assert.ok(out.includes('SessionExpired --> LoggedOut: User redirected'));
+  it('contém transições entre estados', () => {
+    assert.ok(out.includes('LoggedOut --> LoggingIn'));
+    assert.ok(out.includes('LoggingIn --> TwoFactorAuth'));
+    assert.ok(out.includes('TwoFactorAuth --> LoggedIn'));
+    assert.ok(out.includes('LoggedIn --> SessionExpired'));
+    assert.ok(out.includes('SessionExpired --> LoggedOut'));
+    assert.ok(out.includes('LoggingIn --> AccountLocked'));
+    assert.ok(out.includes('TwoFactorAuth --> AccountLocked'));
   });
 
   it('snapshot completo', (t) => {
